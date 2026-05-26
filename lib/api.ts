@@ -24,6 +24,7 @@ async function postAPI(action: string, body: any) {
 }
 
 export const api = {
+  // 公開查詢
   getStatus: (appId: string, ymNumber: string) => 
     fetchAPI('getStatus', { appId, ymNumber }),
   
@@ -33,15 +34,19 @@ export const api = {
   getActiveExaminers: () => 
     fetchAPI('getActiveExaminers'),
 
+  // 成員操作
   submitApplication: (data: any) => 
     postAPI('submitApplication', data),
 
+  // 團長確認
   leaderConfirm: (token: string) => 
     postAPI('leaderConfirm', { token }),
 
+  // 主考回報
   examinerSubmitResult: (token: string, result: string, remarks: string) => 
     postAPI('examinerSubmitResult', { token, result, remarks }),
 
+  // 秘書後台（需 staffToken）
   adminGetPending: (staffToken: string) => 
     postAPI('adminGetPendingApplications', { staffToken }),
   
@@ -56,7 +61,10 @@ export const api = {
   
   markCertificatePickedUp: (staffToken: string, certificateId: string, pickedUpBy?: string) =>
     postAPI('markCertificatePickedUp', { staffToken, certificateId, pickedUpBy }),
-
+  
+  getPrintList: (staffToken: string) =>
+    postAPI('getPrintList', { staffToken }),
+  
   reprintCertificate: (staffToken: string, applicationId: string) =>
     postAPI('reprintCertificate', { staffToken, applicationId })
 };
