@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 
 export default function AdminPage() {
   const [token, setToken] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState<'pending' | 'dashboard' | 'certificates'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'certificates' | 'printList'>('dashboard');
   const [pendingApps, setPendingApps] = useState<any[]>([]);
-  const [dashboard, setDashboard] = useState<any>(null);
+  const [dashboard, setDashboard] = useState<Record<string, number> | null>(null);
+  const [printList, setPrintList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -18,7 +19,7 @@ export default function AdminPage() {
       const res = await api.adminGetDashboard(token);
       if (res.success) {
         setLoggedIn(true);
-        setDashboard(res.stats);
+        setDashboard(res.stats || {});
       } else {
         setMessage('登入失敗：' + (res.error || '請檢查密鑰'));
       }
@@ -40,6 +41,18 @@ export default function AdminPage() {
     setLoading(false);
   };
 
+  const loadPrintList = async () => {
+    setLoading(true);
+    try {
+      const res = await api.getPrintList(token);
+      if (res.success) setPrintList(res.printList || []);
+      else setMessage('載入失敗');
+    } catch (e) {
+      setMessage('網絡錯誤');
+    }
+    setLoading(false);
+  };
+
   const approve = async (appId: string) => {
     setLoading(true);
     try {
@@ -48,7 +61,11 @@ export default function AdminPage() {
         setMessage(`✅ 已批核 ${appId}` + (res.assignedExaminer ? `，指派主考：${res.assignedExaminer.name}` : ''));
         loadPending();
       } else {
-        setMessage('❌ 批核失敗：' + (res.error || '未知錯誤'));
+        if (res.requiresManualOverride) {
+          setMessage(`⚠️ ${appId}：${res.error}。${res.suggestion || ''}`);
+        } else {
+          setMessage('❌ 批核失敗：' + (res.error || '未知錯誤'));
+        }
       }
     } catch (e) {
       setMessage('網絡錯誤');
@@ -61,7 +78,7 @@ export default function AdminPage() {
       <div style={{ background: 'white', padding: '32px', borderRadius: '12px', maxWidth: '400px', margin: '0 auto' }}>
         <h2 style={{ color: '#003366', marginTop: 0 }}>⚙️ 秘書後台登入</h2>
         <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
-          請輸入系統管理密鑰（預設值請於 Apps Script Config 工作表查閱，並建議立即更改）
+          請輸入系統管理密鑰
         </p>
         <input
           type="password"
@@ -97,22 +114,21 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Dashboard Stats */}
       {dashboard && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-          <StatCard label="待團長確認" value={dashboard.pendingLeaderConfirm} color="#ff9800" />
-          <StatCard label="待區批核" value={dashboard.pendingDistrictApproval} color="#f44336" />
-          <StatCard label="考核進行中" value={dashboard.examinerInProgress} color="#2196f3" />
-          <StatCard label="合格待製證書" value={dashboard.examCompletedPass} color="#4caf50" />
-          <StatCard label="待領取證書" value={dashboard.certificatesReady} color="#9c27b0" />
-          <StatCard label="本月新申請" value={dashboard.totalThisMonth} color="#003366" />
+          <StatCard label="待團長確認" value={dashboard['待團長確認'] || 0} color="#ff9800" />
+          <StatCard label="待區批核" value={dashboard['待區批核'] || 0} color="#f44336" />
+          <StatCard label="已指派待接受" value={dashboard['已指派待主考接受'] || 0} color="#9c27b0" />
+          <StatCard label="考核進行中" value={dashboard['已派主考進行中'] || 0} color="#2196f3" />
+          <StatCard label="合格待製證書" value={dashboard['考驗合格待製證書'] || 0} color="#4caf50" />
+          <StatCard label="待領取證書" value={dashboard['證書待領取'] || 0} color="#ff5722" />
         </div>
       )}
 
-      {/* Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        <TabButton active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); }} label="總覽" />
+        <TabButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} label="總覽" />
         <TabButton active={activeTab === 'pending'} onClick={() => { setActiveTab('pending'); loadPending(); }} label="待批核申請" />
+        <TabButton active={activeTab === 'printList'} onClick={() => { setActiveTab('printList'); loadPrintList(); }} label="列印清單" />
         <TabButton active={activeTab === 'certificates'} onClick={() => setActiveTab('certificates')} label="證書管理" />
       </div>
 
@@ -128,10 +144,11 @@ export default function AdminPage() {
                   <tr style={{ background: '#003366', color: 'white' }}>
                     <th style={{ padding: '10px', textAlign: 'left' }}>申請編號</th>
                     <th style={{ padding: '10px', textAlign: 'left' }}>考生</th>
+                    <th style={{ padding: '10px', textAlign: 'left' }}>YMIS</th>
                     <th style={{ padding: '10px', textAlign: 'left' }}>旅團</th>
                     <th style={{ padding: '10px', textAlign: 'left' }}>專章</th>
-                    <th style={{ padding: '10px', textAlign: 'left' }}>模式</th>
-                    <th style={{ padding: '10px', textAlign: 'left' }}>自選主考</th>
+                    <th style={{ padding: '10px', textAlign: 'left' }}>安排</th>
+                    <th style={{ padding: '10px', textAlign: 'left' }}>狀態</th>
                     <th style={{ padding: '10px', textAlign: 'left' }}>操作</th>
                   </tr>
                 </thead>
@@ -140,22 +157,63 @@ export default function AdminPage() {
                     <tr key={idx} style={{ borderBottom: '1px solid #eee', background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
                       <td style={{ padding: '10px', fontFamily: 'monospace', fontSize: '12px' }}>{app.applicationId}</td>
                       <td style={{ padding: '10px' }}>{app.memberName}</td>
+                      <td style={{ padding: '10px' }}>{app.ymNumber}</td>
                       <td style={{ padding: '10px' }}>{app.groupId}</td>
                       <td style={{ padding: '10px' }}>{app.badgeName}</td>
                       <td style={{ padding: '10px' }}>
-                        {app.applicationMode === 'SELF_EXAMINER' ? '自行安排' : 
-                         app.applicationMode === 'TRAINING_COURSE' ? '訓練班' : '區委派'}
+                        {app.examArrangementType === 'SELF_APPLY' ? '自行報考' : 
+                         app.examArrangementType === 'APPROVED_COURSE' ? '訓練班' :
+                         app.examArrangementType === 'EXAM_DAY' ? '考驗日' :
+                         app.examArrangementType === 'CERTIFICATE_EXCHANGE' ? '證書換領' : '其他'}
                       </td>
-                      <td style={{ padding: '10px' }}>{app.selfExaminerName || '—'}</td>
+                      <td style={{ padding: '10px' }}>{app.status}</td>
                       <td style={{ padding: '10px' }}>
                         <button 
                           onClick={() => approve(app.applicationId)}
-                          disabled={loading}
-                          style={{ padding: '6px 16px', background: '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
+                          disabled={loading || app.status === '待團長確認'}
+                          style={{ padding: '6px 16px', background: app.status === '待團長確認' ? '#ccc' : '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: app.status === '待團長確認' ? 'not-allowed' : 'pointer', fontSize: '13px' }}
                         >
-                          一鍵批核
+                          {app.status === '待團長確認' ? '待確認' : '一鍵批核'}
                         </button>
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'printList' && (
+        <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
+          <h3 style={{ color: '#003366', marginTop: 0 }}>🖨️ 證書列印清單</h3>
+          {printList.length === 0 ? (
+            <p style={{ color: '#666' }}>列印清單為空</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#003366', color: 'white' }}>
+                    <th style={{ padding: '8px' }}>序</th>
+                    <th style={{ padding: '8px' }}>考獲日期</th>
+                    <th style={{ padding: '8px' }}>證書編號</th>
+                    <th style={{ padding: '8px' }}>姓名</th>
+                    <th style={{ padding: '8px' }}>旅團</th>
+                    <th style={{ padding: '8px' }}>專章</th>
+                    <th style={{ padding: '8px' }}>重印次數</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {printList.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #eee', background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
+                      <td style={{ padding: '8px' }}>{item.seq}</td>
+                      <td style={{ padding: '8px' }}>{item.resultDate}</td>
+                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>{item.certNumber}</td>
+                      <td style={{ padding: '8px' }}>{item.memberName}</td>
+                      <td style={{ padding: '8px' }}>{item.groupNameCn}</td>
+                      <td style={{ padding: '8px' }}>{item.fullTitle}</td>
+                      <td style={{ padding: '8px', textAlign: 'center' }}>{item.reprintCount || 0}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -170,11 +228,8 @@ export default function AdminPage() {
           <h3 style={{ color: '#003366', marginTop: 0 }}>🏆 證書管理</h3>
           <p style={{ color: '#666', fontSize: '14px' }}>
             此頁面顯示「考核合格待製證書」及「已製作待領取」的證書。<br/>
-            請於列印證書後，輸入證書編號並點擊「標記可領取」。
+            請於列印證書後，在 CertificateQueue 工作表標記「可領取」。
           </p>
-          <div style={{ background: '#fff3e0', padding: '16px', borderRadius: '8px', marginTop: '16px' }}>
-            <strong>提示：</strong>證書管理功能將連接 CertificateQueue 工作表，完整功能請於 Google Sheet 直接操作或等待後續更新。
-          </div>
         </div>
       )}
     </div>

@@ -2,7 +2,7 @@
  * API 呼叫封裝
  * 請將 API_BASE 替換為部署後的 Apps Script Web App URL
  */
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://script.google.com/macros/s/AKfycbwuj7x68EyWB1iEyFppnUJN4J25MKQ69wPLVu6y20LO1F82sUOijU7jWLd-5usOG8sx/exec';
+const API_BASE = 'https://script.google.com/macros/s/AKfycbwuj7x68EyWB1iEyFppnUJN4J25MKQ69wPLVu6y20LO1F82sUOijU7jWLd-5usOG8sx/exec';
 
 async function fetchAPI(action: string, params?: Record<string, string>) {
   const url = new URL(API_BASE);
@@ -24,9 +24,8 @@ async function postAPI(action: string, body: any) {
 }
 
 export const api = {
-  // 公開查詢
-  getStatus: (appId: string, phoneLast4: string) => 
-    fetchAPI('getStatus', { appId, phoneLast4 }),
+  getStatus: (appId: string, ymNumber: string) => 
+    fetchAPI('getStatus', { appId, ymNumber }),
   
   getPendingCertificates: () => 
     fetchAPI('getPendingCertificates'),
@@ -34,19 +33,15 @@ export const api = {
   getActiveExaminers: () => 
     fetchAPI('getActiveExaminers'),
 
-  // 成員操作
   submitApplication: (data: any) => 
     postAPI('submitApplication', data),
 
-  // 團長確認
   leaderConfirm: (token: string) => 
     postAPI('leaderConfirm', { token }),
 
-  // 主考回報
   examinerSubmitResult: (token: string, result: string, remarks: string) => 
     postAPI('examinerSubmitResult', { token, result, remarks }),
 
-  // 秘書後台（需 staffToken）
   adminGetPending: (staffToken: string) => 
     postAPI('adminGetPendingApplications', { staffToken }),
   
@@ -60,7 +55,10 @@ export const api = {
     postAPI('markCertificateReady', { staffToken, certificateId }),
   
   markCertificatePickedUp: (staffToken: string, certificateId: string, pickedUpBy?: string) =>
-    postAPI('markCertificatePickedUp', { staffToken, certificateId, pickedUpBy })
+    postAPI('markCertificatePickedUp', { staffToken, certificateId, pickedUpBy }),
+
+  reprintCertificate: (staffToken: string, applicationId: string) =>
+    postAPI('reprintCertificate', { staffToken, applicationId })
 };
 
 export { API_BASE };

@@ -9,18 +9,18 @@ function StatusContent() {
   const prefillAppId = searchParams.get('appId') || '';
   
   const [appId, setAppId] = useState(prefillAppId);
-  const [phoneLast4, setPhoneLast4] = useState('');
+  const [ymNumber, setYmNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
 
   const handleQuery = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!appId || !phoneLast4) return;
+    if (!appId || !ymNumber) return;
     setLoading(true);
     setError('');
     try {
-      const res = await api.getStatus(appId, phoneLast4);
+      const res = await api.getStatus(appId, ymNumber);
       if (res.success) {
         setResult(res);
       } else {
@@ -36,7 +36,7 @@ function StatusContent() {
   const statusFlow = [
     { key: 'PENDING_LEADER', label: '待團長確認', icon: '👤' },
     { key: 'PENDING_DISTRICT', label: '待區批核', icon: '🏛️' },
-    { key: 'PENDING_EXAMINER_ASSIGN', label: '已批核待派主考', icon: '⏳' },
+    { key: 'PENDING_EXAMINER_ACCEPT', label: '已指派待主考接受', icon: '⏳' },
     { key: 'ASSIGNED_EXAMINER', label: '已派主考進行中', icon: '📝' },
     { key: 'EXAM_COMPLETED_PASS', label: '考驗合格待製證書', icon: '✅' },
     { key: 'CERTIFICATE_READY', label: '證書待領取', icon: '🏆' },
@@ -46,7 +46,7 @@ function StatusContent() {
   const statusMap: Record<string, string> = {
     '待團長確認': 'PENDING_LEADER',
     '待區批核': 'PENDING_DISTRICT',
-    '已批核待派主考': 'PENDING_EXAMINER_ASSIGN',
+    '已指派待主考接受': 'PENDING_EXAMINER_ACCEPT',
     '已派主考進行中': 'ASSIGNED_EXAMINER',
     '考驗合格待製證書': 'EXAM_COMPLETED_PASS',
     '證書待領取': 'CERTIFICATE_READY',
@@ -78,12 +78,11 @@ function StatusContent() {
             />
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600 }}>電話後四碼 *</label>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600 }}>童軍成員編號(YMIS) *</label>
             <input 
-              value={phoneLast4} 
-              onChange={e => setPhoneLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder="例如：3456"
-              maxLength={4}
+              value={ymNumber} 
+              onChange={e => setYmNumber(e.target.value)}
+              placeholder="YMIS 編號"
               required
               style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ddd' }}
             />
@@ -112,6 +111,7 @@ function StatusContent() {
           <div style={{ background: '#e3f2fd', padding: '20px', borderRadius: '8px', marginBottom: '24px' }}>
             <h3 style={{ margin: '0 0 12px', color: '#003366' }}>{result.memberName} · {result.badgeName}</h3>
             <p style={{ margin: '4px 0', color: '#666' }}>申請編號：<strong>{result.applicationId}</strong></p>
+            <p style={{ margin: '4px 0', color: '#666' }}>YMIS：{result.ymNumber}</p>
             <p style={{ margin: '4px 0', color: '#666' }}>所屬旅團：{result.groupId}</p>
           </div>
 

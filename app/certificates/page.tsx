@@ -10,7 +10,7 @@ export default function CertificatesPage() {
 
   useEffect(() => {
     api.getPendingCertificates()
-      .then(r => {
+      .then((r: any) => {
         if (r.success) setCertificates(r.certificates || []);
         else setError(r.error || '載入失敗');
       })

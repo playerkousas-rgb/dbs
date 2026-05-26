@@ -23,7 +23,7 @@ export default function HomePage() {
         />
         <Card 
           title="🔍 進度查詢" 
-          desc="輸入申請編號及電話後4碼，隨時追蹤考核進度。"
+          desc="輸入申請編號及童軍成員編號(YMIS)，隨時追蹤考核進度。"
           href="/status"
           btn="查詢進度"
         />

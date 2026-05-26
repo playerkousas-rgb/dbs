@@ -13,7 +13,6 @@ function ExaminerContent() {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   
-  // 成績表單
   const [result, setResult] = useState<'PASS' | 'FAIL'>('PASS');
   const [remarks, setRemarks] = useState('');
 
@@ -23,10 +22,6 @@ function ExaminerContent() {
       setLoading(false);
       return;
     }
-    
-    // 實際應用時：呼叫 API 驗證 token
-    // api.verifyExaminerToken(token).then(...)
-    // 這裡先模擬驗證通過（因為後端已實作 verifyToken）
     setTimeout(() => {
       setVerified(true);
       setLoading(false);
