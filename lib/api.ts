@@ -2,7 +2,7 @@
  * API 呼叫封裝
  * 請將 API_BASE 替換為部署後的 Apps Script Web App URL
  */
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://script.google.com/macros/s/AKfycbwuj7x68EyWB1iEyFppnUJN4J25MKQ69wPLVu6y20LO1F82sUOijU7jWLd-5usOG8sx/exec';
 
 async function fetchAPI(action: string, params?: Record<string, string>) {
   const url = new URL(API_BASE);
