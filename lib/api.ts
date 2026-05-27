@@ -1,88 +1,99 @@
 /**
- * API 呼叫封裝 (v2.0 - CORS Fix)
- * 使用 text/plain 避免觸發瀏覽器 CORS 預檢請求
+ * API 呼叫封裝 (v2.1 - Hybrid CORS Fix)
+ * 讀取操作使用 GET (避免後端邏輯缺失)，寫入操作使用 POST (配合 text/plain 繞過 CORS)
  */
 const API_BASE = 'https://script.google.com/macros/s/AKfycbwoPUw609tUygwm5RxRKTtCDiAnXjGikYdwJACcTPNoJvPGYz7PN2hfiFx9d74Vi4NK/exec';
 
-// 🔧 統一改用 POST 請求 + text/plain 避開 CORS 預檢
-async function callGAS(action: string, body?: any) {
-  const payload = body ? JSON.stringify({ action, ...body }) : JSON.stringify({ action });
-  
-  const res = await fetch(API_BASE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' }, // 👈 關鍵！用 text/plain 就不觸發 CORS
-    body: payload
-  });
-  
-  return res.json();
-}
-
-// 保留 GET 功能（GET 通常不會觸發 CORS 預檢）
-async function fetchAPI(action: string, params?: Record<string, string>) {
+// 1. GET 請求：用於「讀取」資料 (通常不會觸發 CORS 預檢)
+async function fetchGet(action: string, params?: Record<string, string>) {
   const url = new URL(API_BASE);
   url.searchParams.set('action', action);
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   }
-  const res = await fetch(url.toString());
-  return res.json();
+  try {
+    const res = await fetch(url.toString());
+    return res.json();
+  } catch (error) {
+    console.error("GET Error:", error);
+    throw error;
+  }
+}
+
+// 2. POST 請求：用於「寫入/修改」資料 (必須用 text/plain 避開 CORS)
+async function fetchPost(action: string, body: any) {
+  try {
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' }, // 👈 關鍵：用純文本避開 CORS 預檢
+      body: JSON.stringify({ action, ...body })
+    });
+    return res.json();
+  } catch (error) {
+    console.error("POST Error:", error);
+    throw error;
+  }
 }
 
 export const api = {
-  // 公開查詢（GET）
+  // ==========================================
+  // 📖 讀取操作 (使用 GET - 穩定且快速)
+  // ==========================================
+  
   getStatus: (appId: string, ymNumber: string) => 
-    fetchAPI('getStatus', { appId, ymNumber }),
+    fetchGet('getStatus', { appId, ymNumber }),
   
   getPendingCertificates: () => 
-    callGAS('getPendingCertificates'),
+    fetchGet('getPendingCertificates'),
   
   getActiveExaminers: () => 
-    callGAS('getActiveExaminers'),
+    fetchGet('getActiveExaminers'), // 👈 恢復用 GET，這裡不會掛掉
 
   getBadgeCodes: () =>
-    callGAS('getBadgeCodes'),
+    fetchGet('getBadgeCodes'),     // 👈 恢復用 GET
 
   getGroups: () =>
-    callGAS('getGroups'),
+    fetchGet('getGroups'),         // 👈 恢復用 GET
 
-  // 成員操作（POST）
+  // ==========================================
+  // ✍️ 寫入操作 (使用 POST - 避開 CORS)
+  // ==========================================
+
   submitApplication: (data: any) => 
-    callGAS('submitApplication', data),
+    fetchPost('submitApplication', data),
 
   parentConfirm: (token: string) =>
-    callGAS('parentConfirm', { token }),
+    fetchPost('parentConfirm', { token }),
 
   leaderConfirm: (token: string) => 
-    callGAS('leaderConfirm', { token }),
+    fetchPost('leaderConfirm', { token }),
 
   examinerSubmitResult: (token: string, result: string, remarks: string) => 
-    callGAS('examinerSubmitResult', { token, result, remarks }),
+    fetchPost('examinerSubmitResult', { token, result, remarks }),
 
-  // 秘書後台
   adminGetPending: (staffToken: string) => 
-    callGAS('adminGetPendingApplications', { staffToken }),
+    fetchPost('adminGetPendingApplications', { staffToken }),
   
   adminGetDashboard: (staffToken: string) => 
-    callGAS('adminGetDashboard', { staffToken }),
+    fetchPost('adminGetDashboard', { staffToken }),
   
   districtApprove: (staffToken: string, applicationId: string, approvedBy?: string) =>
-    callGAS('districtApprove', { staffToken, applicationId, approvedBy }),
+    fetchPost('districtApprove', { staffToken, applicationId, approvedBy }),
   
   markCertificateReady: (staffToken: string, certificateId: string) =>
-    callGAS('markCertificateReady', { staffToken, certificateId }),
+    fetchPost('markCertificateReady', { staffToken, certificateId }),
   
   markCertificatePickedUp: (staffToken: string, certificateId: string, pickedUpBy?: string) =>
-    callGAS('markCertificatePickedUp', { staffToken, certificateId, pickedUpBy }),
+    fetchPost('markCertificatePickedUp', { staffToken, certificateId, pickedUpBy }),
   
   getPrintList: (staffToken: string) =>
-    callGAS('getPrintList', { staffToken }),
+    fetchPost('getPrintList', { staffToken }),
   
   reprintCertificate: (staffToken: string, applicationId: string) =>
-    callGAS('reprintCertificate', { staffToken, applicationId }),
+    fetchPost('reprintCertificate', { staffToken, applicationId }),
 
-  // 主考申請
   submitExaminerApplication: (data: any) =>
-    callGAS('submitExaminerApplication', data)
+    fetchPost('submitExaminerApplication', data)
 };
 
 export { API_BASE };
