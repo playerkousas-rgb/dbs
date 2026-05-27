@@ -44,6 +44,8 @@ interface FormState {
   examArrangementType: string;
   selfExaminerName: string;
   courseName: string;
+  certNumber: string;
+  certIssuer: string;
   remarks: string;
 }
 
@@ -56,6 +58,7 @@ export default function ApplyPage() {
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
+  const [certFile, setCertFile] = useState<File | null>(null);
 
   const [form, setForm] = useState<FormState>({
     memberName: '',
@@ -71,6 +74,8 @@ export default function ApplyPage() {
     examArrangementType: 'SELF_APPLY',
     selfExaminerName: '',
     courseName: '',
+    certNumber: '',
+    certIssuer: '',
     remarks: ''
   });
 
@@ -112,11 +117,35 @@ export default function ApplyPage() {
       })
     : [];
 
+  // Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (showCertExchange && !certFile) {
+      setError('證書換專章需要上傳證書副本');
+      return;
+    }
+    if (certFile && certFile.size > 5 * 1024 * 1024) {
+      setError('檔案大小不能超過 5MB');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
+      let certFileData = '';
+      let certFileName = '';
+      if (certFile) {
+        certFileData = await fileToBase64(certFile);
+        certFileName = certFile.name;
+      }
       const res = await api.submitApplication({
         memberName: form.memberName,
         memberNameEn: form.memberNameEn,
@@ -131,6 +160,10 @@ export default function ApplyPage() {
         examArrangementType: form.examArrangementType,
         selfExaminerName: form.selfExaminerName,
         courseName: form.courseName,
+        certNumber: form.certNumber,
+        certIssuer: form.certIssuer,
+        certFileName: certFileName,
+        certFileData: certFileData,
         remarks: form.remarks
       });
       if (res.success) {
@@ -199,6 +232,7 @@ export default function ApplyPage() {
 
   const showSelfExaminer = form.examArrangementType === 'SELF_APPLY';
   const showCourseName = ['APPROVED_COURSE', 'EXAM_DAY', 'OTHER_ARRANGEMENT'].includes(form.examArrangementType);
+  const showCertExchange = form.examArrangementType === 'CERTIFICATE_EXCHANGE';
 
   if (dataLoading) {
     return (
@@ -323,7 +357,7 @@ export default function ApplyPage() {
                 <input
                   type="radio" name="arrangement" value={mode.value}
                   checked={form.examArrangementType === mode.value}
-                  onChange={() => setForm(prev => ({ ...prev, examArrangementType: mode.value, selfExaminerName: '', courseName: '' }))}
+                  onChange={() => { setForm(prev => ({ ...prev, examArrangementType: mode.value, selfExaminerName: '', courseName: '', certNumber: '', certIssuer: '' })); setCertFile(null); }}
                   style={{ marginRight: '8px' }}
                 />
                 {mode.label}
@@ -397,6 +431,48 @@ export default function ApplyPage() {
                 onChange={(v: string) => updateForm('courseName', v)}
                 placeholder="請填寫名稱及主辦單位"
               />
+            </div>
+          )}
+
+          {showCertExchange && (
+            <div style={{ marginBottom: '16px', padding: '16px', background: '#e8f5e9', borderRadius: '8px' }}>
+              <h4 style={{ margin: '0 0 12px', color: '#2e7d32' }}>📄 證書換專章資料</h4>
+              <Row>
+                <Input
+                  label="證書編號"
+                  value={form.certNumber}
+                  onChange={(v: string) => updateForm('certNumber', v)}
+                  required
+                  placeholder="例如：FA-2024-001"
+                />
+                <Input
+                  label="發證機構"
+                  value={form.certIssuer}
+                  onChange={(v: string) => updateForm('certIssuer', v)}
+                  required
+                  placeholder="例如：香港聖約翰救護機構"
+                />
+              </Row>
+              <div style={{ marginTop: '8px' }}>
+                <label style={labelStyle}>
+                  上傳證書副本 <span style={{ color: '#c62828' }}>*</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  required={showCertExchange}
+                  onChange={e => setCertFile(e.target.files?.[0] || null)}
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd', background: 'white', boxSizing: 'border-box' }}
+                />
+                <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                  請上傳證書照片或掃描檔（JPG / PNG / PDF），檔案大小上限 5MB
+                </p>
+                {certFile && (
+                  <p style={{ fontSize: '12px', color: '#2e7d32', marginTop: '4px' }}>
+                    ✅ 已選擇：{certFile.name} ({(certFile.size / 1024).toFixed(1)} KB)
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </Section>

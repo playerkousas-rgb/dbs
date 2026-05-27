@@ -2,7 +2,7 @@
  * API 呼叫封裝
  * Apps Script Web App URL
  */
-const API_BASE = 'https://script.google.com/macros/s/AKfycbwuj7x68EyWB1iEyFppnUJN4J25MKQ69wPLVu6y20LO1F82sUOijU7jWLd-5usOG8sx/exec';
+const API_BASE = 'https://script.google.com/macros/s/AKfycbwoPUw609tUygwm5RxRKTtCDiAnXjGikYdwJACcTPNoJvPGYz7PN2hfiFx9d74Vi4NK/exec';
 
 async function fetchAPI(action: string, params?: Record<string, string>) {
   const url = new URL(API_BASE);
