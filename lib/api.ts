@@ -1,6 +1,6 @@
 /**
  * API 呼叫封裝
- * 請將 API_BASE 替換為部署後的 Apps Script Web App URL
+ * Apps Script Web App URL
  */
 const API_BASE = 'https://script.google.com/macros/s/AKfycbwuj7x68EyWB1iEyFppnUJN4J25MKQ69wPLVu6y20LO1F82sUOijU7jWLd-5usOG8sx/exec';
 
@@ -34,9 +34,21 @@ export const api = {
   getActiveExaminers: () => 
     fetchAPI('getActiveExaminers'),
 
+  // 動態讀取 BadgeCodes
+  getBadgeCodes: () =>
+    fetchAPI('getBadgeCodes'),
+
+  // 動態讀取 Groups
+  getGroups: () =>
+    fetchAPI('getGroups'),
+
   // 成員操作
   submitApplication: (data: any) => 
     postAPI('submitApplication', data),
+
+  // 家長確認
+  parentConfirm: (token: string) =>
+    postAPI('parentConfirm', { token }),
 
   // 團長確認
   leaderConfirm: (token: string) => 

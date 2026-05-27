@@ -3,12 +3,41 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 
+interface BadgeInfo {
+  badgeName: string;
+  badgeCode: string;
+  badgeNameEn: string;
+  category: string;
+  categoryEn: string;
+  fullTitle: string;
+}
+
+interface GroupInfo {
+  groupId: string;
+  groupNumber: number;
+  groupName: string;
+  leaderName: string;
+  leaderTitle: string;
+  leaderEmail: string;
+  hasLeader: boolean;
+}
+
+interface ExaminerInfo {
+  name: string;
+  unit: string;
+  qualifiedBadges: { badgeName: string; scope: string; category: string }[];
+  districtBadges: string[];
+  groupBadges: string[];
+}
+
 interface FormState {
   memberName: string;
   memberNameEn: string;
   groupId: string;
   phone: string;
   email: string;
+  parentName: string;
+  parentEmail: string;
   ymNumber: string;
   badgeName: string;
   badgeCategory: string;
@@ -19,8 +48,11 @@ interface FormState {
 }
 
 export default function ApplyPage() {
-  const [examiners, setExaminers] = useState<any[]>([]);
+  const [badges, setBadges] = useState<BadgeInfo[]>([]);
+  const [groups, setGroups] = useState<GroupInfo[]>([]);
+  const [examiners, setExaminers] = useState<ExaminerInfo[]>([]);
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
@@ -31,9 +63,11 @@ export default function ApplyPage() {
     groupId: '',
     phone: '',
     email: '',
+    parentName: '',
+    parentEmail: '',
     ymNumber: '',
     badgeName: '',
-    badgeCategory: '技能',
+    badgeCategory: '',
     examArrangementType: 'SELF_APPLY',
     selfExaminerName: '',
     courseName: '',
@@ -41,8 +75,16 @@ export default function ApplyPage() {
   });
 
   useEffect(() => {
-    api.getActiveExaminers().then((r: any) => {
-      if (r.success) setExaminers(r.examiners || []);
+    setDataLoading(true);
+    Promise.all([
+      api.getBadgeCodes().catch(() => ({ success: false })),
+      api.getGroups().catch(() => ({ success: false })),
+      api.getActiveExaminers().catch(() => ({ success: false }))
+    ]).then(([badgeRes, groupRes, examinerRes]) => {
+      if (badgeRes.success) setBadges(badgeRes.badges || []);
+      if (groupRes.success) setGroups(groupRes.groups || []);
+      if (examinerRes.success) setExaminers(examinerRes.examiners || []);
+      setDataLoading(false);
     });
   }, []);
 
@@ -50,26 +92,47 @@ export default function ApplyPage() {
     setForm(prev => ({ ...prev, [key]: value }));
   };
 
+  const selectedGroup = groups.find(g => g.groupId === form.groupId);
+  const selectedBadge = badges.find(b => b.badgeName === form.badgeName);
+  const badgeCategories = [...new Set(badges.map(b => b.category).filter(Boolean))];
+  const filteredBadges = form.badgeCategory
+    ? badges.filter(b => b.category === form.badgeCategory)
+    : badges;
+
+  const availableExaminers = form.badgeName
+    ? examiners.filter(ex =>
+        ex.qualifiedBadges.some(qb => qb.badgeName === form.badgeName)
+      ).map(ex => {
+        const qual = ex.qualifiedBadges.find(qb => qb.badgeName === form.badgeName);
+        return {
+          ...ex,
+          scope: qual?.scope || '',
+          scopeLabel: qual?.scope === 'D' ? '區主考（接受區內所有旅團）' : '旅團主考（只限本旅）'
+        };
+      })
+    : [];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const payload = {
+      const res = await api.submitApplication({
         memberName: form.memberName,
         memberNameEn: form.memberNameEn,
         groupId: form.groupId,
         phone: form.phone,
         email: form.email,
+        parentName: form.parentName,
+        parentEmail: form.parentEmail,
         ymNumber: form.ymNumber,
         badgeName: form.badgeName,
-        badgeCategory: form.badgeCategory,
+        badgeCategory: selectedBadge?.category || form.badgeCategory,
         examArrangementType: form.examArrangementType,
         selfExaminerName: form.selfExaminerName,
         courseName: form.courseName,
         remarks: form.remarks
-      };
-      const res = await api.submitApplication(payload);
+      });
       if (res.success) {
         setSubmitted(true);
         setResult(res);
@@ -89,23 +152,43 @@ export default function ApplyPage() {
         <p style={{ fontSize: '18px', margin: '16px 0' }}>
           申請編號：<strong style={{ color: '#003366' }}>{result.applicationId}</strong>
         </p>
-        <p style={{ color: '#666' }}>
-          系統已自動發送確認電郵至您填寫的地址，<br/>
-          並通知團長進行確認。請保存此編號以便查詢進度。
-        </p>
-        <p style={{ marginTop: '24px', padding: '16px', background: '#e3f2fd', borderRadius: '8px' }}>
+
+        <div style={{ background: '#e8f5e9', padding: '16px', borderRadius: '8px', margin: '16px 0', textAlign: 'left' }}>
+          <h4 style={{ margin: '0 0 8px', color: '#2e7d32' }}>📧 下一步：家長確認</h4>
+          <p style={{ margin: 0, fontSize: '14px', color: '#333' }}>
+            系統已發送確認電郵至家長 <strong>{form.parentEmail}</strong>。<br/>
+            家長點擊確認後，系統會自動通知團長進行第二步確認。
+          </p>
+        </div>
+
+        <div style={{ background: '#e3f2fd', padding: '16px', borderRadius: '8px', margin: '16px 0', textAlign: 'left' }}>
+          <h4 style={{ margin: '0 0 8px', color: '#003366' }}>📋 流程說明</h4>
+          <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#333' }}>
+            <li><strong>待家長確認</strong> ← 目前狀態</li>
+            <li>待團長確認</li>
+            <li>待區會批核</li>
+            <li>已派主考進行考核</li>
+            <li>考核完成 → 製作證書 → 領取</li>
+          </ol>
+        </div>
+
+        {selectedGroup && !selectedGroup.hasLeader && (
+          <div style={{ background: '#fff3e0', padding: '12px', borderRadius: '8px', marginTop: '16px', fontSize: '14px', textAlign: 'left' }}>
+            <strong>⚠️ 提示：</strong>您的旅團目前沒有登記團長，團長確認通知將發送至旅團公用電郵，
+            由{selectedGroup.groupName}負責領袖處理。
+          </div>
+        )}
+
+        <p style={{ marginTop: '24px', padding: '16px', background: '#f5f5f5', borderRadius: '8px' }}>
           查詢驗證碼：<strong>{result.queryCode}</strong><br/>
-          進度查詢連結：<br/>
           <a href={`/status?appId=${result.applicationId}`} style={{ color: '#003366', wordBreak: 'break-all' }}>
-            點擊查詢進度
+            點擊查詢進度 →
           </a>
         </p>
       </div>
     );
   }
 
-  const badgeCategories = ['技能', '服務', '教導', '興趣', '體適能'];
-  
   const arrangementOptions = [
     { value: 'SELF_APPLY', label: '童軍成員自行報考' },
     { value: 'APPROVED_COURSE', label: '認可訓練班' },
@@ -114,18 +197,17 @@ export default function ApplyPage() {
     { value: 'CERTIFICATE_EXCHANGE', label: '證書換專章' }
   ];
 
-  const groupOptions = [
-    { id: 'G-015', name: '港島第十五旅 (15th)' },
-    { id: 'G-017', name: '港島第十七旅 (17th)' },
-    { id: 'G-081', name: '港島第八十一旅 (81st)' },
-    { id: 'G-082', name: '港島第八十二旅 (82nd)' },
-    { id: 'G-206', name: '港島第二零六旅 (206th)' },
-    { id: 'G-242', name: '港島第二四二旅 (242nd)' },
-    { id: 'G-1095', name: '港島第一零九五旅 (1095th)' },
-  ];
-
   const showSelfExaminer = form.examArrangementType === 'SELF_APPLY';
-  const showCourseName = form.examArrangementType === 'APPROVED_COURSE' || form.examArrangementType === 'EXAM_DAY' || form.examArrangementType === 'OTHER_ARRANGEMENT';
+  const showCourseName = ['APPROVED_COURSE', 'EXAM_DAY', 'OTHER_ARRANGEMENT'].includes(form.examArrangementType);
+
+  if (dataLoading) {
+    return (
+      <div style={{ background: 'white', padding: '40px', borderRadius: '12px', textAlign: 'center' }}>
+        <p style={{ color: '#666', fontSize: '16px' }}>⏳ 載入系統資料中...</p>
+        <p style={{ color: '#999', fontSize: '14px' }}>正在從伺服器讀取專章代碼、旅團及主考資料</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: 'white', padding: '32px', borderRadius: '12px' }}>
@@ -138,40 +220,108 @@ export default function ApplyPage() {
       )}
 
       <form onSubmit={handleSubmit}>
-        <Section title="個人資料">
+        {/* ===== 成員資料 ===== */}
+        <Section title="成員資料">
           <Row>
-            <Input label="中文姓名 *" value={form.memberName} onChange={(v: string) => updateForm('memberName', v)} required />
+            <Input label="中文姓名" value={form.memberName} onChange={(v: string) => updateForm('memberName', v)} required />
             <Input label="英文姓名" value={form.memberNameEn} onChange={(v: string) => updateForm('memberNameEn', v)} />
           </Row>
           <Row>
-            <Select label="所屬旅團 *" value={form.groupId} onChange={(v: string) => updateForm('groupId', v)} required
-              options={groupOptions.map(g => ({ value: g.id, label: g.name }))} />
-            <Input label="YMIS 童軍成員編號 *" value={form.ymNumber} onChange={(v: string) => updateForm('ymNumber', v)} required />
+            <div>
+              <label style={labelStyle}>所屬旅團 <span style={{ color: '#c62828' }}>*</span></label>
+              <select
+                value={form.groupId}
+                required
+                onChange={e => updateForm('groupId', e.target.value)}
+                style={selectStyle}
+              >
+                <option value="">請選擇...</option>
+                {groups.map(g => (
+                  <option key={g.groupId} value={g.groupId}>
+                    {g.groupName} ({g.groupNumber}th){!g.hasLeader ? ' ⚠️' : ''}
+                  </option>
+                ))}
+              </select>
+              {selectedGroup && !selectedGroup.hasLeader && (
+                <p style={{ fontSize: '12px', color: '#ff9800', marginTop: '4px' }}>
+                  ⚠️ 此旅團目前沒有登記團長，確認通知將發送至旅團公用電郵。
+                </p>
+              )}
+              {selectedGroup && selectedGroup.hasLeader && (
+                <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>團長：{selectedGroup.leaderTitle}</p>
+              )}
+            </div>
+            <Input label="YMIS 童軍成員編號" value={form.ymNumber} onChange={(v: string) => updateForm('ymNumber', v)} required />
           </Row>
           <Row>
-            <Input label="聯絡電話 *" value={form.phone} onChange={(v: string) => updateForm('phone', v)} required />
-            <Input label="電郵地址 *" value={form.email} onChange={(v: string) => updateForm('email', v)} type="email" required />
+            <Input label="聯絡電話" value={form.phone} onChange={(v: string) => updateForm('phone', v)} required />
+            <Input label="成員電郵" value={form.email} onChange={(v: string) => updateForm('email', v)} type="email" required />
           </Row>
         </Section>
 
+        {/* ===== 家長資料 ===== */}
+        <Section title="家長 / 監護人資料">
+          <div style={{ background: '#e3f2fd', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
+            <strong>📌 重要：</strong>根據 PT03 規定，報考專章需要家長/監護人同意。
+            提交後系統將自動發送確認電郵給家長，家長確認後才會通知團長。
+          </div>
+          <Row>
+            <Input label="家長姓名" value={form.parentName} onChange={(v: string) => updateForm('parentName', v)} required placeholder="例如：陳大文" />
+            <Input label="家長電郵" value={form.parentEmail} onChange={(v: string) => updateForm('parentEmail', v)} type="email" required placeholder="家長用來確認的電郵地址" />
+          </Row>
+        </Section>
+
+        {/* ===== 專章資料 ===== */}
         <Section title="專科徽章資料">
           <Row>
-            <Input label="專章名稱 *" value={form.badgeName} onChange={(v: string) => updateForm('badgeName', v)} required 
-              placeholder="例如：急救、露營、先鋒工程" />
-            <Select label="專章類別" value={form.badgeCategory} onChange={(v: string) => updateForm('badgeCategory', v)}
-              options={badgeCategories.map(c => ({ value: c, label: c }))} />
+            <div>
+              <label style={labelStyle}>專章類別（篩選用）</label>
+              <select
+                value={form.badgeCategory}
+                onChange={e => { updateForm('badgeCategory', e.target.value); updateForm('badgeName', ''); }}
+                style={selectStyle}
+              >
+                <option value="">全部類別</option>
+                {badgeCategories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>專章名稱 <span style={{ color: '#c62828' }}>*</span></label>
+              <select
+                value={form.badgeName}
+                required
+                onChange={e => {
+                  const sel = badges.find(b => b.badgeName === e.target.value);
+                  updateForm('badgeName', e.target.value);
+                  if (sel && !form.badgeCategory) updateForm('badgeCategory', sel.category);
+                  updateForm('selfExaminerName', '');
+                }}
+                style={selectStyle}
+              >
+                <option value="">請選擇專章...</option>
+                {filteredBadges.map(b => (
+                  <option key={b.badgeCode} value={b.badgeName}>
+                    {b.fullTitle || b.badgeName} ({b.badgeCode})
+                  </option>
+                ))}
+              </select>
+              {selectedBadge && (
+                <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                  {selectedBadge.badgeNameEn} · 代碼：{selectedBadge.badgeCode}
+                </p>
+              )}
+            </div>
           </Row>
         </Section>
 
+        {/* ===== 考驗安排 ===== */}
         <Section title="考驗安排（依據 P120A1-09）">
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>考驗安排 *</label>
             {arrangementOptions.map(mode => (
               <label key={mode.value} style={{ display: 'block', marginBottom: '8px', cursor: 'pointer' }}>
-                <input 
-                  type="radio" 
-                  name="arrangement" 
-                  value={mode.value}
+                <input
+                  type="radio" name="arrangement" value={mode.value}
                   checked={form.examArrangementType === mode.value}
                   onChange={() => setForm(prev => ({ ...prev, examArrangementType: mode.value, selfExaminerName: '', courseName: '' }))}
                   style={{ marginRight: '8px' }}
@@ -183,53 +333,104 @@ export default function ApplyPage() {
 
           {showSelfExaminer && (
             <div style={{ marginBottom: '16px', padding: '16px', background: '#f5f5f5', borderRadius: '8px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>自行安排主考姓名</label>
-              <input 
-                value={form.selfExaminerName}
-                onChange={e => updateForm('selfExaminerName', e.target.value)}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}
-                placeholder="請輸入主考姓名，系統將核實其資格"
-              />
-              <p style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
-                請確認主考已於筲箕灣區主考名單內並持有此專章資格。
-              </p>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+                選擇主考 {form.badgeName ? `（可考「${form.badgeName}」的主考）` : ''}
+              </label>
+              
+              {form.badgeName && availableExaminers.length > 0 ? (
+                <div>
+                  <select
+                    value={form.selfExaminerName}
+                    onChange={e => updateForm('selfExaminerName', e.target.value)}
+                    style={{ ...selectStyle, marginBottom: '8px' }}
+                  >
+                    <option value="">請選擇主考...</option>
+                    {availableExaminers.map((ex, idx) => {
+                      const isGroupOnly = ex.scope === 'G';
+                      const selectedGroupNum = groups.find(g => g.groupId === form.groupId)?.groupNumber?.toString() || '___';
+                      const sameGroup = isGroupOnly && ex.unit && ex.unit.includes(selectedGroupNum);
+                      const disabled = isGroupOnly && !sameGroup;
+                      return (
+                        <option key={idx} value={ex.name} disabled={disabled}>
+                          {ex.name} [{ex.unit || '區'}] — {ex.scopeLabel}
+                          {disabled ? ' (非本旅，不可選)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <div style={{ fontSize: '13px', color: '#666', marginTop: '8px' }}>
+                    <strong>可選主考：</strong>
+                    <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                      {availableExaminers.map((ex, idx) => (
+                        <li key={idx} style={{ marginBottom: '2px' }}>
+                          <span style={{
+                            display: 'inline-block', padding: '1px 6px', borderRadius: '3px',
+                            fontSize: '11px', fontWeight: 600,
+                            background: ex.scope === 'D' ? '#e3f2fd' : '#fff3e0',
+                            color: ex.scope === 'D' ? '#1565c0' : '#e65100',
+                            marginRight: '6px'
+                          }}>
+                            {ex.scope === 'D' ? '區主考' : '旅團主考'}
+                          </span>
+                          {ex.name} ({ex.unit || '—'})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : form.badgeName ? (
+                <div style={{ padding: '12px', background: '#fff3e0', borderRadius: '6px', fontSize: '14px' }}>
+                  <strong>⚠️</strong> 目前沒有已登記的主考可考核「{form.badgeName}」。
+                  您可以改選其他考驗安排。
+                </div>
+              ) : (
+                <p style={{ fontSize: '13px', color: '#999' }}>請先選擇專章，系統將自動顯示可選主考。</p>
+              )}
             </div>
           )}
 
           {showCourseName && (
             <div style={{ marginBottom: '16px', padding: '16px', background: '#f5f5f5', borderRadius: '8px' }}>
-              <Input 
+              <Input
                 label={form.examArrangementType === 'APPROVED_COURSE' ? '訓練班名稱 / 主辦單位' : form.examArrangementType === 'EXAM_DAY' ? '考驗日名稱 / 主辦單位' : '詳細資料'}
-                value={form.courseName} 
-                onChange={(v: string) => updateForm('courseName', v)} 
+                value={form.courseName}
+                onChange={(v: string) => updateForm('courseName', v)}
                 placeholder="請填寫名稱及主辦單位"
               />
             </div>
           )}
         </Section>
 
+        {/* ===== 備註 ===== */}
         <Section title="備註">
           <textarea
             value={form.remarks}
             onChange={e => updateForm('remarks', e.target.value)}
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', minHeight: '80px' }}
+            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', minHeight: '80px', boxSizing: 'border-box' }}
             placeholder="如有特殊情況請在此說明"
           />
         </Section>
+
+        {/* ===== 流程提醒 ===== */}
+        <div style={{ background: '#e8f5e9', padding: '16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
+          <strong>📋 提交後流程：</strong><br/>
+          提交 → <strong>家長電郵確認</strong> → 團長電郵確認 → 區會審批 → 派發主考 → 考核 → 證書
+        </div>
 
         <div style={{ background: '#fff3e0', padding: '16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
           <strong>⚠️ 重要提醒：</strong><br/>
           1. 每人同一時間最多報考兩項專科徽章。<br/>
           2. 考核須於獲批核後三個月內完成。<br/>
-          3. 提交後系統將自動通知家長及團長。
+          3. 提交後系統將自動發送確認電郵給家長，家長確認後才通知團長。
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={loading}
           style={{
             width: '100%', padding: '14px', background: loading ? '#ccc' : '#003366',
-            color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer'
+            color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px',
+            fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer'
           }}
         >
           {loading ? '提交中...' : '提交申請'}
@@ -238,6 +439,10 @@ export default function ApplyPage() {
     </div>
   );
 }
+
+// ===== Shared styles & components =====
+const labelStyle: React.CSSProperties = { display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600 };
+const selectStyle: React.CSSProperties = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', background: 'white', boxSizing: 'border-box' };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -259,38 +464,14 @@ function Row({ children }: { children: React.ReactNode }) {
 function Input({ label, value, onChange, required, type = 'text', placeholder }: { label: string; value: string; onChange: (v: string) => void; required?: boolean; type?: string; placeholder?: string }) {
   return (
     <div>
-      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600 }}>
+      <label style={labelStyle}>
         {label} {required && <span style={{ color: '#c62828' }}>*</span>}
       </label>
       <input
-        type={type}
-        value={value}
-        required={required}
-        placeholder={placeholder}
+        type={type} value={value} required={required} placeholder={placeholder}
         onChange={e => onChange(e.target.value)}
         style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', boxSizing: 'border-box' }}
       />
-    </div>
-  );
-}
-
-function Select({ label, value, onChange, required, options }: { label: string; value: string; onChange: (v: string) => void; required?: boolean; options: { value: string; label: string }[] }) {
-  return (
-    <div>
-      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600 }}>
-        {label} {required && <span style={{ color: '#c62828' }}>*</span>}
-      </label>
-      <select
-        value={value}
-        required={required}
-        onChange={e => onChange(e.target.value)}
-        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', background: 'white' }}
-      >
-        <option value="">請選擇...</option>
-        {options.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
     </div>
   );
 }

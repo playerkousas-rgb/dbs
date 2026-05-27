@@ -33,31 +33,22 @@ function StatusContent() {
     setLoading(false);
   };
 
+  // 包含家長確認步驟的流程
   const statusFlow = [
-    { key: 'PENDING_LEADER', label: '待團長確認', icon: '👤' },
-    { key: 'PENDING_DISTRICT', label: '待區批核', icon: '🏛️' },
-    { key: 'PENDING_EXAMINER_ACCEPT', label: '已指派待主考接受', icon: '⏳' },
-    { key: 'ASSIGNED_EXAMINER', label: '已派主考進行中', icon: '📝' },
-    { key: 'EXAM_COMPLETED_PASS', label: '考驗合格待製證書', icon: '✅' },
-    { key: 'CERTIFICATE_READY', label: '證書待領取', icon: '🏆' },
-    { key: 'COMPLETED', label: '已完成', icon: '🎉' }
+    { key: 'PENDING_PARENT', label: '待家長確認', icon: '👪', statusText: '待家長確認' },
+    { key: 'PENDING_LEADER', label: '待團長確認', icon: '👤', statusText: '待團長確認' },
+    { key: 'PENDING_DISTRICT', label: '待區批核', icon: '🏛️', statusText: '待區批核' },
+    { key: 'PENDING_EXAMINER_ACCEPT', label: '已指派待主考接受', icon: '⏳', statusText: '已指派待主考接受' },
+    { key: 'ASSIGNED_EXAMINER', label: '已派主考進行中', icon: '📝', statusText: '已派主考進行中' },
+    { key: 'EXAM_COMPLETED_PASS', label: '考驗合格待製證書', icon: '✅', statusText: '考驗合格待製證書' },
+    { key: 'CERTIFICATE_READY', label: '證書待領取', icon: '🏆', statusText: '證書待領取' },
+    { key: 'COMPLETED', label: '已完成', icon: '🎉', statusText: '已完成' }
   ];
 
-  const statusMap: Record<string, string> = {
-    '待團長確認': 'PENDING_LEADER',
-    '待區批核': 'PENDING_DISTRICT',
-    '已指派待主考接受': 'PENDING_EXAMINER_ACCEPT',
-    '已派主考進行中': 'ASSIGNED_EXAMINER',
-    '考驗合格待製證書': 'EXAM_COMPLETED_PASS',
-    '證書待領取': 'CERTIFICATE_READY',
-    '已完成': 'COMPLETED',
-    '不合格': 'EXAM_COMPLETED_FAIL',
-    '逾期不合格': 'EXPIRED'
-  };
-
   const getCurrentStep = (status: string) => {
-    const mapped = statusMap[status] || status;
-    const idx = statusFlow.findIndex(s => s.key === mapped);
+    const idx = statusFlow.findIndex(s => s.statusText === status);
+    // 也匹配「已批核待派主考」
+    if (status === '已批核待派主考') return 3;
     return idx >= 0 ? idx : statusFlow.length;
   };
 
@@ -74,7 +65,7 @@ function StatusContent() {
               onChange={e => setAppId(e.target.value.toUpperCase())}
               placeholder="例如：SKW-250520-0001"
               required
-              style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ddd' }}
+              style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ddd', boxSizing: 'border-box' }}
             />
           </div>
           <div>
@@ -84,7 +75,7 @@ function StatusContent() {
               onChange={e => setYmNumber(e.target.value)}
               placeholder="YMIS 編號"
               required
-              style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ddd' }}
+              style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ddd', boxSizing: 'border-box' }}
             />
           </div>
           <button 
@@ -122,7 +113,7 @@ function StatusContent() {
                 const currentStep = getCurrentStep(result.status);
                 const isActive = idx === currentStep;
                 const isCompleted = idx < currentStep;
-                const isFailed = (result.status === '不合格' || result.status === '逾期不合格') && idx >= 4;
+                const isFailed = (result.status === '不合格' || result.status === '逾期不合格') && idx >= 5;
                 
                 return (
                   <div key={step.key} style={{
@@ -132,7 +123,7 @@ function StatusContent() {
                     opacity: idx > currentStep && !isFailed ? 0.5 : 1
                   }}>
                     <span style={{ fontSize: '20px', marginRight: '12px' }}>
-                      {isFailed && idx === 4 ? '❌' : isCompleted ? '✓' : isActive ? '▶' : '○'}
+                      {isFailed && idx === 5 ? '❌' : isCompleted ? '✓' : isActive ? '▶' : '○'}
                     </span>
                     <span style={{ fontWeight: isActive ? 700 : 400, color: isActive ? '#2e7d32' : '#333' }}>
                       {step.label}
@@ -158,14 +149,15 @@ function StatusContent() {
             <div style={{ background: '#fff3e0', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
               <strong>證書編號：</strong>{result.certificateNumber}
               <br/>
-              {result.pickedUpAt ? `已於 ${result.pickedUpAt.split('T')[0]} 領取` : '尚未領取'}
+              {result.pickedUpAt ? `已於 ${result.pickedUpAt.toString().split('T')[0]} 領取` : '尚未領取'}
             </div>
           )}
 
           <div style={{ fontSize: '13px', color: '#666', marginTop: '16px' }}>
-            <p>提交時間：{result.submittedAt ? result.submittedAt.replace('T', ' ').slice(0, 16) : '—'}</p>
-            {result.leaderConfirmedAt && <p>團長確認：{result.leaderConfirmedAt.replace('T', ' ').slice(0, 16)}</p>}
-            {result.districtApprovedAt && <p>區會批核：{result.districtApprovedAt.replace('T', ' ').slice(0, 16)}</p>}
+            <p>提交時間：{result.submittedAt ? result.submittedAt.toString().replace('T', ' ').slice(0, 16) : '—'}</p>
+            {result.parentConfirmedAt && <p>家長確認：{result.parentConfirmedAt.toString().replace('T', ' ').slice(0, 16)}</p>}
+            {result.leaderConfirmedAt && <p>團長確認：{result.leaderConfirmedAt.toString().replace('T', ' ').slice(0, 16)}</p>}
+            {result.districtApprovedAt && <p>區會批核：{result.districtApprovedAt.toString().replace('T', ' ').slice(0, 16)}</p>}
             {result.examDeadline && <p>考核限期：{result.examDeadline}</p>}
           </div>
         </div>
