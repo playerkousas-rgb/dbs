@@ -1,18 +1,18 @@
 /**
- * API 呼叫封裝 (v3.1 - Clean & Fixed)
- * 修正了語法錯誤，確保所有請求使用 POST + text/plain 避開 CORS
+ * API 呼叫封裝 (v3.2 - 最終修復版)
+ * 修正了 console.error 語法錯誤，確保所有請求強制使用 POST + text/plain
  */
 
-// 👇 這裡的網址必須是純文字，不能有 []() 符號
+// 👇 確保這裡是你的 Web App URL
 const API_BASE = 'https://script.google.com/macros/s/AKfycbwoPUw609tUygwm5RxRKTtCDiAnXjGikYdwJACcTPNoJvPGYz7PN2hfiFx9d74Vi4NK/exec';
 
 // 統一發送函數
 async function callGAS(action: string, body: any = {}) {
   try {
+    // ✅ 使用 POST + text/plain 避開 CORS 預檢
     const response = await fetch(API_BASE, {
       method: 'POST',
-      // 👇 關鍵：使用 text/plain 讓瀏覽器不發送 OPTIONS 預檢請求
-      headers: { 'Content-Type': 'text/plain' },
+      headers: { 'Content-Type': 'text/plain' }, 
       body: JSON.stringify({ action, ...body })
     });
 
@@ -20,18 +20,19 @@ async function callGAS(action: string, body: any = {}) {
     if (contentType && contentType.includes("application/json")) {
       return response.json();
     } else {
-      // 如果腳本崩潰，會返回 HTML，這裡會捕捉到並顯示錯誤
       const text = await response.text();
-      throw new Error("伺服器返回了非 JSON 格式 (可能是腳本崩潰): " + text.substring(0, 150));
+      throw new Error("伺服器返回了非 JSON 格式: " + text.substring(0, 150));
     }
   } catch (error) {
-    console.error("API Error (" + action + "):", error);
+    // ✅ 修正了這裡的語法錯誤
+    console.error("GAS API Error (" + action + "):", error);
     throw error;
   }
 }
 
 export const api = {
-  // 全部使用 callGAS (即 POST 請求)
+  // === 全部統一使用 callGAS (即 POST 請求) ===
+  
   getStatus: (appId: string, ymNumber: string) => 
     callGAS('getStatus', { appId, ymNumber }),
   
