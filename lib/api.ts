@@ -1,28 +1,35 @@
 /**
- * API 呼叫封裝 (v2.2 - Ultimate CORS Fix)
- * 所有請求統一使用 POST + text/plain 避開 CORS 攔截
+ * API 呼叫封裝 (v3.0 - 強制 POST 版)
+ * 為了徹底解決 CORS 問題，所有請求統一走 POST 通道
  */
 const API_BASE = 'https://script.google.com/macros/s/AKfycbwoPUw609tUygwm5RxRKTtCDiAnXjGikYdwJACcTPNoJvPGYz7PN2hfiFx9d74Vi4NK/exec';
 
-// 🔧 統一發送函數
+// 統一發送函數：POST + text/plain
 async function callGAS(action: string, body: any = {}) {
   try {
-    const res = await fetch(API_BASE, {
+    const response = await fetch(API_BASE, {
       method: 'POST',
-      // 👇 關鍵：使用 text/plain 讓瀏覽器不發送 OPTIONS 預檢請求
-      headers: { 'Content-Type': 'text/plain' }, 
+      // 👇 關鍵：使用 text/plain 避開瀏覽器預檢 (Preflight)
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ action, ...body })
     });
-    return res.json();
+
+    // 如果回應不是 JSON (例如 500 錯誤頁)，這裡會報錯，讓我們知道
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+      return response.json();
+    } else {
+      const text = await response.text();
+      throw new Error("伺服器返回了非 JSON 格式: " + text.substring(0, 100));
+    }
   } catch (error) {
-    console.error(`GAS API Error (${action}):`, error);
+    console.error(`API Error (${action}):`, error);
     throw error;
   }
 }
 
 export const api = {
-  // 👇 全部統一用 callGAS，不分 GET/POST
-  
+  // === 讀取 (改用 callGAS) ===
   getStatus: (appId: string, ymNumber: string) => 
     callGAS('getStatus', { appId, ymNumber }),
   
@@ -38,6 +45,7 @@ export const api = {
   getGroups: () =>
     callGAS('getGroups'),
 
+  // === 寫入 (改用 callGAS) ===
   submitApplication: (data: any) => 
     callGAS('submitApplication', data),
 
