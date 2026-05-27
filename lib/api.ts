@@ -1,9 +1,23 @@
 /**
- * API 呼叫封裝
- * Apps Script Web App URL
+ * API 呼叫封裝 (v2.0 - CORS Fix)
+ * 使用 text/plain 避免觸發瀏覽器 CORS 預檢請求
  */
 const API_BASE = 'https://script.google.com/macros/s/AKfycbwoPUw609tUygwm5RxRKTtCDiAnXjGikYdwJACcTPNoJvPGYz7PN2hfiFx9d74Vi4NK/exec';
 
+// 🔧 統一改用 POST 請求 + text/plain 避開 CORS 預檢
+async function callGAS(action: string, body?: any) {
+  const payload = body ? JSON.stringify({ action, ...body }) : JSON.stringify({ action });
+  
+  const res = await fetch(API_BASE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' }, // 👈 關鍵！用 text/plain 就不觸發 CORS
+    body: payload
+  });
+  
+  return res.json();
+}
+
+// 保留 GET 功能（GET 通常不會觸發 CORS 預檢）
 async function fetchAPI(action: string, params?: Record<string, string>) {
   const url = new URL(API_BASE);
   url.searchParams.set('action', action);
@@ -14,75 +28,61 @@ async function fetchAPI(action: string, params?: Record<string, string>) {
   return res.json();
 }
 
-async function postAPI(action: string, body: any) {
-  const res = await fetch(API_BASE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, ...body })
-  });
-  return res.json();
-}
-
 export const api = {
-  // 公開查詢
+  // 公開查詢（GET）
   getStatus: (appId: string, ymNumber: string) => 
     fetchAPI('getStatus', { appId, ymNumber }),
   
   getPendingCertificates: () => 
-    fetchAPI('getPendingCertificates'),
+    callGAS('getPendingCertificates'),
   
   getActiveExaminers: () => 
-    fetchAPI('getActiveExaminers'),
+    callGAS('getActiveExaminers'),
 
-  // 動態讀取 BadgeCodes
   getBadgeCodes: () =>
-    fetchAPI('getBadgeCodes'),
+    callGAS('getBadgeCodes'),
 
-  // 動態讀取 Groups
   getGroups: () =>
-    fetchAPI('getGroups'),
+    callGAS('getGroups'),
 
-  // 成員操作
+  // 成員操作（POST）
   submitApplication: (data: any) => 
-    postAPI('submitApplication', data),
+    callGAS('submitApplication', data),
 
-  // 家長確認
   parentConfirm: (token: string) =>
-    postAPI('parentConfirm', { token }),
+    callGAS('parentConfirm', { token }),
 
-  // 團長確認
   leaderConfirm: (token: string) => 
-    postAPI('leaderConfirm', { token }),
+    callGAS('leaderConfirm', { token }),
 
-  // 主考回報
   examinerSubmitResult: (token: string, result: string, remarks: string) => 
-    postAPI('examinerSubmitResult', { token, result, remarks }),
+    callGAS('examinerSubmitResult', { token, result, remarks }),
 
-  // 秘書後台（需 staffToken）
+  // 秘書後台
   adminGetPending: (staffToken: string) => 
-    postAPI('adminGetPendingApplications', { staffToken }),
+    callGAS('adminGetPendingApplications', { staffToken }),
   
   adminGetDashboard: (staffToken: string) => 
-    postAPI('adminGetDashboard', { staffToken }),
+    callGAS('adminGetDashboard', { staffToken }),
   
   districtApprove: (staffToken: string, applicationId: string, approvedBy?: string) =>
-    postAPI('districtApprove', { staffToken, applicationId, approvedBy }),
+    callGAS('districtApprove', { staffToken, applicationId, approvedBy }),
   
   markCertificateReady: (staffToken: string, certificateId: string) =>
-    postAPI('markCertificateReady', { staffToken, certificateId }),
+    callGAS('markCertificateReady', { staffToken, certificateId }),
   
   markCertificatePickedUp: (staffToken: string, certificateId: string, pickedUpBy?: string) =>
-    postAPI('markCertificatePickedUp', { staffToken, certificateId, pickedUpBy }),
+    callGAS('markCertificatePickedUp', { staffToken, certificateId, pickedUpBy }),
   
   getPrintList: (staffToken: string) =>
-    postAPI('getPrintList', { staffToken }),
+    callGAS('getPrintList', { staffToken }),
   
   reprintCertificate: (staffToken: string, applicationId: string) =>
-    postAPI('reprintCertificate', { staffToken, applicationId }),
+    callGAS('reprintCertificate', { staffToken, applicationId }),
 
   // 主考申請
   submitExaminerApplication: (data: any) =>
-    postAPI('submitExaminerApplication', data)
+    callGAS('submitExaminerApplication', data)
 };
 
 export { API_BASE };
