@@ -382,7 +382,7 @@ export default function ApplyPage() {
                     {availableExaminers.map((ex, idx) => {
                       const isGroupOnly = ex.scope === 'G';
                       const selectedGroupNum = groups.find(g => g.groupId === form.groupId)?.groupNumber?.toString() || '___';
-                      const sameGroup = isGroupOnly && ex.unit && ex.unit.includes(selectedGroupNum);
+                      const sameGroup = isGroupOnly && ex.unit && new RegExp('第' + selectedGroupNum + '旅').test(ex.unit);
                       const disabled = isGroupOnly && !sameGroup;
                       return (
                         <option key={idx} value={ex.name} disabled={disabled}>

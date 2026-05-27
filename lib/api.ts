@@ -78,7 +78,11 @@ export const api = {
     postAPI('getPrintList', { staffToken }),
   
   reprintCertificate: (staffToken: string, applicationId: string) =>
-    postAPI('reprintCertificate', { staffToken, applicationId })
+    postAPI('reprintCertificate', { staffToken, applicationId }),
+
+  // 主考申請
+  submitExaminerApplication: (data: any) =>
+    postAPI('submitExaminerApplication', data)
 };
 
 export { API_BASE };

@@ -34,6 +34,12 @@ export default function HomePage() {
           btn="查看列表"
         />
         <Card 
+          title="👨‍🏫 主考申請" 
+          desc="領袖可申請成為專科徽章主考，經審批後加入主考名冊。"
+          href="/examiner-apply"
+          btn="申請主考"
+        />
+        <Card 
           title="⚙️ 秘書後台" 
           desc="審批申請、指派主考、管理證書隊列、查看統計報表。"
           href="/admin"
