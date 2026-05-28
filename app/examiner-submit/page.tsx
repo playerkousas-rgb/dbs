@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 
-export default function ExaminerSubmitPage() {
+function ExaminerSubmitInner() {
   const params = useSearchParams();
   const token = params.get('token') || '';
   const [result, setResult] = useState<'PASS' | 'FAIL' | ''>('');
@@ -119,5 +119,13 @@ export default function ExaminerSubmitPage() {
         {status === 'loading' ? '⏳ 處理中...' : '提交考核結果'}
       </button>
     </div>
+  );
+}
+
+export default function ExaminerSubmitPage() {
+  return (
+    <Suspense fallback={<div style={{ textAlign: 'center', padding: '40px' }}>載入中...</div>}>
+      <ExaminerSubmitInner />
+    </Suspense>
   );
 }

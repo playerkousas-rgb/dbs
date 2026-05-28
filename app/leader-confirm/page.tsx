@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 
-export default function LeaderConfirmPage() {
+function LeaderConfirmInner() {
   const params = useSearchParams();
   const token = params.get('token') || '';
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -42,8 +42,7 @@ export default function LeaderConfirmPage() {
       setMessage('連結缺少驗證碼');
       return;
     }
-    // 進來先停在「待確認」狀態，由用戶點按鈕觸發
-    setStatus('success');  // 進來預設成功（顯示確認按鈕）
+    setStatus('success');
     setMessage('');
   }, [token]);
 
@@ -66,18 +65,18 @@ export default function LeaderConfirmPage() {
   return (
     <div style={{ background: 'white', padding: '40px 24px', borderRadius: '12px', maxWidth: '600px', margin: '40px auto' }}>
       <h2 style={{ color: '#003366', marginBottom: '16px', textAlign: 'center' }}>團長確認</h2>
-      
+
       {status === 'loading' && (
         <p style={{ textAlign: 'center', color: '#666' }}>⏳ 處理中...</p>
       )}
-      
+
       {status === 'error' && (
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: '48px', margin: '24px 0' }}>❌</p>
           <p style={{ color: '#c62828' }}>{message}</p>
         </div>
       )}
-      
+
       {status === 'success' && !confirmed && (
         <div>
           <div style={{ background: '#fff3e0', padding: '16px', borderRadius: '8px', margin: '16px 0' }}>
@@ -88,7 +87,7 @@ export default function LeaderConfirmPage() {
               💡 此電郵確認等同團長簽署及蓋印。
             </p>
           </div>
-          
+
           <div style={{ margin: '16px 0' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#333' }}>
               您的電郵（選填，方便紀錄）
@@ -101,7 +100,7 @@ export default function LeaderConfirmPage() {
               style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
             />
           </div>
-          
+
           <button
             onClick={doConfirm}
             style={{
@@ -114,5 +113,13 @@ export default function LeaderConfirmPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function LeaderConfirmPage() {
+  return (
+    <Suspense fallback={<div style={{ textAlign: 'center', padding: '40px' }}>載入中...</div>}>
+      <LeaderConfirmInner />
+    </Suspense>
   );
 }

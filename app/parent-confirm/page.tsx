@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 
-export default function ParentConfirmPage() {
+function ParentConfirmInner() {
   const params = useSearchParams();
   const token = params.get('token') || '';
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -35,14 +35,14 @@ export default function ParentConfirmPage() {
   return (
     <div style={{ background: 'white', padding: '40px 24px', borderRadius: '12px', textAlign: 'center', maxWidth: '600px', margin: '40px auto' }}>
       <h2 style={{ color: '#003366', marginBottom: '16px' }}>家長同意確認</h2>
-      
+
       {status === 'loading' && (
         <div>
           <p style={{ fontSize: '48px', margin: '24px 0' }}>⏳</p>
           <p style={{ color: '#666' }}>處理中，請稍候...</p>
         </div>
       )}
-      
+
       {status === 'success' && (
         <div>
           <p style={{ fontSize: '48px', margin: '24px 0' }}>✅</p>
@@ -56,7 +56,7 @@ export default function ParentConfirmPage() {
           </div>
         </div>
       )}
-      
+
       {status === 'error' && (
         <div>
           <p style={{ fontSize: '48px', margin: '24px 0' }}>❌</p>
@@ -65,5 +65,13 @@ export default function ParentConfirmPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ParentConfirmPage() {
+  return (
+    <Suspense fallback={<div style={{ textAlign: 'center', padding: '40px' }}>載入中...</div>}>
+      <ParentConfirmInner />
+    </Suspense>
   );
 }

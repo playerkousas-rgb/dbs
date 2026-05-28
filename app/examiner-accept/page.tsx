@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 
-export default function ExaminerAcceptPage() {
+function ExaminerAcceptInner() {
   const params = useSearchParams();
   const token = params.get('token') || '';
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -77,5 +77,13 @@ export default function ExaminerAcceptPage() {
         {status === 'loading' ? '⏳ 處理中...' : '✅ 確認接受指派'}
       </button>
     </div>
+  );
+}
+
+export default function ExaminerAcceptPage() {
+  return (
+    <Suspense fallback={<div style={{ textAlign: 'center', padding: '40px' }}>載入中...</div>}>
+      <ExaminerAcceptInner />
+    </Suspense>
   );
 }
