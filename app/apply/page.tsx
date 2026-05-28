@@ -9,7 +9,7 @@ interface BadgeInfo {
   badgeNameEn: string;
   category: string;
   categoryEn: string;
-  fullTitle: string;
+  fullTitle: string;    // ✅ 確認有這欄（你 API 已經回傳）
 }
 
 interface GroupInfo {
@@ -98,7 +98,7 @@ export default function ApplyPage() {
   };
 
   const selectedGroup = groups.find(g => g.groupId === form.groupId);
-  const selectedBadge = badges.find(b => b.badgeName === form.badgeName);
+const selectedBadge = badges.find(b => b.fullTitle === form.badgeName);  // 👈 改用 fullTitle
   const badgeCategories = [...new Set(badges.map(b => b.category).filter(Boolean))];
   const filteredBadges = form.badgeCategory
     ? badges.filter(b => b.category === form.badgeCategory)
@@ -106,7 +106,7 @@ export default function ApplyPage() {
 
   const availableExaminers = form.badgeName
     ? examiners.filter(ex =>
-        ex.qualifiedBadges.some(qb => qb.badgeName === form.badgeName)
+       ex.qualifiedBadges.some(qb => qb.badgeName === form.badgeName)  // qb.badgeName 已是 full_title
       ).map(ex => {
         const qual = ex.qualifiedBadges.find(qb => qb.badgeName === form.badgeName);
         return {
