@@ -1,5 +1,5 @@
 /**
- * API 呼叫封裝 (v3.6 - Email links to frontend)
+ * API 呼叫封裝 (v3.7 - admin override examiner)
  * 讀取用 GET (穩定)，寫入用 POST (避開 CORS)
  */
 
@@ -25,7 +25,6 @@ async function callGet(action: string, params?: Record<string, string>) {
 // 2. POST 請求：用於提交資料
 async function callPost(action: string, body: any) {
   try {
-    // 👇 使用 text/plain 是解決 Google CORS 的關鍵
     const res = await fetch(API_BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
@@ -83,8 +82,9 @@ export const api = {
   adminGetDashboard: (staffToken: string) =>
     callPost('adminGetDashboard', { staffToken }),
 
-  districtApprove: (staffToken: string, applicationId: string, approvedBy?: string) =>
-    callPost('districtApprove', { staffToken, applicationId, approvedBy }),
+  // ⭐ 新增第 4 個參數 overrideExaminerId（人手指派主考）
+  districtApprove: (staffToken: string, applicationId: string, approvedBy?: string, overrideExaminerId?: string) =>
+    callPost('districtApprove', { staffToken, applicationId, approvedBy, overrideExaminerId }),
 
   markCertificateReady: (staffToken: string, certificateId: string) =>
     callPost('markCertificateReady', { staffToken, certificateId }),

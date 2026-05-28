@@ -79,19 +79,30 @@ export default function AdminPage() {
     setLoading(false);
   };
 
-  const approve = async (appId: string) => {
+  const approve = async (appId: string, overrideExaminerId?: string, examinerName?: string) => {
+    const app = pendingApps.find(a => a.applicationId === appId);
+    const preview = app?.examinerPreview;
+
+    let confirmMsg = `確定要批核 ${appId} 嗎？\n\n考生：${app?.memberName}\n專章：${app?.badgeName}\n`;
+    if (overrideExaminerId && examinerName) {
+      confirmMsg += `\n指派主考：${examinerName}（人手指派）`;
+    } else if (preview?.mode === 'no_examiner') {
+      confirmMsg += `\n${preview.label}（${preview.detail}）`;
+    } else if (preview?.examinerId) {
+      confirmMsg += `\n指派主考：${preview.label}\n${preview.detail}`;
+    } else {
+      confirmMsg += `\n⚠️ 注意：${preview?.label || ''} ${preview?.detail || ''}`;
+    }
+    if (!confirm(confirmMsg)) return;
+
     setLoading(true);
     try {
-      const res = await api.districtApprove(token, appId);
+      const res = await api.districtApprove(token, appId, '秘書後台', overrideExaminerId);
       if (res.success) {
         setMessage(`✅ 已批核 ${appId}` + (res.assignedExaminer ? `，指派主考：${res.assignedExaminer.name}` : ''));
         loadPending();
       } else {
-        if (res.requiresManualOverride) {
-          setMessage(`⚠️ ${appId}：${res.error}。${res.suggestion || ''}`);
-        } else {
-          setMessage('❌ 批核失敗：' + (res.error || '未知錯誤'));
-        }
+        setMessage('❌ 批核失敗：' + (res.error || '未知錯誤'));
       }
     } catch (e) {
       setMessage('網絡錯誤');
@@ -114,8 +125,8 @@ export default function AdminPage() {
           placeholder="輸入 STAFF_TOKEN"
           style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ddd', marginBottom: '16px', boxSizing: 'border-box' }}
         />
-        <button 
-          onClick={login} 
+        <button
+          onClick={login}
           disabled={loading}
           style={{ width: '100%', padding: '12px', background: '#003366', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
         >
@@ -166,59 +177,21 @@ export default function AdminPage() {
       {activeTab === 'pending' && (
         <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
           <h3 style={{ color: '#003366', marginTop: 0 }}>待批核申請列表</h3>
+          <p style={{ color: '#666', fontSize: '13px', marginTop: 0 }}>
+            💡 系統會預先計算每筆申請的主考分配建議，您可確認後批核，或改派其他主考。
+          </p>
           {pendingApps.length === 0 ? (
             <p style={{ color: '#666' }}>目前沒有待批核的申請</p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                <thead>
-                  <tr style={{ background: '#003366', color: 'white' }}>
-                    <th style={{ padding: '10px', textAlign: 'left' }}>申請編號</th>
-                    <th style={{ padding: '10px', textAlign: 'left' }}>考生</th>
-                    <th style={{ padding: '10px', textAlign: 'left' }}>YMIS</th>
-                    <th style={{ padding: '10px', textAlign: 'left' }}>旅團</th>
-                    <th style={{ padding: '10px', textAlign: 'left' }}>專章</th>
-                    <th style={{ padding: '10px', textAlign: 'left' }}>安排</th>
-                    <th style={{ padding: '10px', textAlign: 'left' }}>狀態</th>
-                    <th style={{ padding: '10px', textAlign: 'left' }}>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingApps.map((app, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #eee', background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
-                      <td style={{ padding: '10px', fontFamily: 'monospace', fontSize: '12px' }}>{app.applicationId}</td>
-                      <td style={{ padding: '10px' }}>{app.memberName}</td>
-                      <td style={{ padding: '10px' }}>{app.ymNumber}</td>
-                      <td style={{ padding: '10px' }}>{app.groupId}</td>
-                      <td style={{ padding: '10px' }}>{app.badgeName}</td>
-                      <td style={{ padding: '10px' }}>
-                        {app.examArrangementType === 'SELF_APPLY' ? '自行報考' : 
-                         app.examArrangementType === 'APPROVED_COURSE' ? '訓練班' :
-                         app.examArrangementType === 'EXAM_DAY' ? '考驗日' :
-                         app.examArrangementType === 'CERTIFICATE_EXCHANGE' ? '證書換領' : '其他'}
-                      </td>
-                      <td style={{ padding: '10px' }}>
-                        <span style={{
-                          padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600,
-                          background: app.status === '待團長確認' ? '#fff3e0' : '#e8f5e9',
-                          color: app.status === '待團長確認' ? '#e65100' : '#2e7d32'
-                        }}>
-                          {app.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px' }}>
-                        <button 
-                          onClick={() => approve(app.applicationId)}
-                          disabled={loading || app.status === '待家長確認' || app.status === '待團長確認'}
-                          style={{ padding: '6px 16px', background: (app.status === '待家長確認' || app.status === '待團長確認') ? '#ccc' : '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: (app.status === '待家長確認' || app.status === '待團長確認') ? 'not-allowed' : 'pointer', fontSize: '13px' }}
-                        >
-                          {app.status === '待家長確認' ? '待家長' : status === '待團長確認' ? '待團長' : '一鍵批核'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {pendingApps.map((app, idx) => (
+                <PendingCard
+                  key={idx}
+                  app={app}
+                  onApprove={approve}
+                  loading={loading}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -248,16 +221,16 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {printList.map((item, idx) => (
+                  {printList.map((p, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #eee', background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
-                      <td style={{ padding: '8px' }}>{idx + 1}</td>
-                      <td style={{ padding: '8px' }}>{item.resultDate || item.result_date || '—'}</td>
-                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>{item.certNumber || item.certificate_number || '—'}</td>
-                      <td style={{ padding: '8px' }}>{item.memberName || item.member_name || '—'}</td>
-                      <td style={{ padding: '8px' }}>{item.groupNameCn || item.group_name || '—'}</td>
-                      <td style={{ padding: '8px' }}>{item.fullTitle || item.badge_name || '—'}</td>
-                      <td style={{ padding: '8px' }}>{item.category || '—'}</td>
-                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>{item.badgeCode || item.badge_code || '—'}</td>
+                      <td style={{ padding: '8px', textAlign: 'center' }}>{p.seq}</td>
+                      <td style={{ padding: '8px' }}>{p.resultDate}</td>
+                      <td style={{ padding: '8px', fontFamily: 'monospace', fontSize: '11px' }}>{p.certNumber}</td>
+                      <td style={{ padding: '8px' }}>{p.memberName}</td>
+                      <td style={{ padding: '8px' }}>{p.groupNameCn}</td>
+                      <td style={{ padding: '8px' }}>{p.badgeName}</td>
+                      <td style={{ padding: '8px' }}>{p.category}</td>
+                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>{p.badgeCode}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -271,10 +244,10 @@ export default function AdminPage() {
         <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
           <h3 style={{ color: '#003366', marginTop: 0 }}>👨‍🏫 主考名單（動態讀取）</h3>
           <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
-            資料來源：主考名冊 Excel 檔案。<strong style={{ color: '#1565c0' }}>D</strong> = 區主考（接受區內所有旅團），
+            資料來源：ExaminerMatrix → Examiners（自動同步）。<strong style={{ color: '#1565c0' }}>D</strong> = 區主考（接受區內所有旅團），
             <strong style={{ color: '#e65100' }}>G</strong> = 旅團主考（只限本旅團）。
           </p>
-          
+
           {examiners.length === 0 ? (
             <p style={{ color: '#666' }}>載入中或沒有主考資料...</p>
           ) : (
@@ -298,7 +271,7 @@ export default function AdminPage() {
                         {ex.districtBadges.length > 0 ? (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
                             {ex.districtBadges.map((b: string, bi: number) => (
-                              <span key={bi} style={{ 
+                              <span key={bi} style={{
                                 display: 'inline-block', padding: '1px 6px', borderRadius: '3px',
                                 fontSize: '11px', background: '#e3f2fd', color: '#1565c0'
                               }}>
@@ -312,7 +285,7 @@ export default function AdminPage() {
                         {ex.groupBadges.length > 0 ? (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
                             {ex.groupBadges.map((b: string, bi: number) => (
-                              <span key={bi} style={{ 
+                              <span key={bi} style={{
                                 display: 'inline-block', padding: '1px 6px', borderRadius: '3px',
                                 fontSize: '11px', background: '#fff3e0', color: '#e65100'
                               }}>
@@ -340,7 +313,7 @@ export default function AdminPage() {
           <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
             直接從 Google Sheet 的 BadgeCodes 分頁讀取。更新 Sheet 後此頁面會自動反映更改，無需改程式碼。
           </p>
-          
+
           {badges.length === 0 ? (
             <p style={{ color: '#666' }}>載入中或沒有專章資料...</p>
           ) : (
@@ -364,7 +337,7 @@ export default function AdminPage() {
                       <td style={{ padding: '8px' }}>
                         <span style={{
                           padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600,
-                          background: b.category === '興趣' ? '#e8f5e9' : 
+                          background: b.category === '興趣' ? '#e8f5e9' :
                                      b.category === '技能' ? '#e3f2fd' :
                                      b.category === '服務' ? '#fff3e0' :
                                      b.category === '教導' ? '#f3e5f5' : '#f5f5f5',
@@ -395,7 +368,7 @@ export default function AdminPage() {
           <p style={{ color: '#666', fontSize: '14px' }}>
             此頁面顯示「考核合格待製證書」及「已製作待領取」的證書。
           </p>
-          
+
           <div style={{ background: '#e3f2fd', padding: '16px', borderRadius: '8px', marginTop: '16px' }}>
             <h4 style={{ margin: '0 0 8px', color: '#003366' }}>📋 證書模版說明</h4>
             <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#333' }}>
@@ -419,27 +392,193 @@ export default function AdminPage() {
         <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
           <h3 style={{ color: '#003366', marginTop: 0 }}>📈 系統概覽</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <InfoCard 
-              title="資料來源" 
+            <InfoCard
+              title="資料來源"
               items={[
                 '專章代碼：BadgeCodes 工作表（動態讀取）',
-                '主考名單：獨立 Excel 檔案（動態讀取）',
+                '主考名單：ExaminerMatrix → Examiners',
                 '旅團資料：Groups 工作表',
                 '申請紀錄：Applications 工作表'
-              ]} 
+              ]}
             />
-            <InfoCard 
-              title="更新方式" 
+            <InfoCard
+              title="更新方式"
               items={[
                 '更新專章代碼：直接編輯 BadgeCodes Sheet',
-                '更新主考資格：直接編輯主考 Excel 檔案',
+                '更新主考資格：直接編輯 ExaminerMatrix Sheet',
                 '更新旅團資料：直接編輯 Groups Sheet',
                 '無需修改程式碼，前端自動反映'
-              ]} 
+              ]}
             />
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// 待批核卡片（含主考預覽 + 改派功能）
+// ============================================================
+function PendingCard({ app, onApprove, loading }: { app: any; onApprove: (id: string, overrideId?: string, name?: string) => void; loading: boolean }) {
+  const [overrideMode, setOverrideMode] = useState(false);
+  const [selectedExaminerId, setSelectedExaminerId] = useState('');
+  const [allExaminers, setAllExaminers] = useState<any[]>([]);
+
+  const preview = app.examinerPreview || {};
+  const isWaiting = app.status === '待家長確認' || app.status === '待團長確認';
+
+  const loadAllExaminers = async () => {
+    if (allExaminers.length > 0) return;
+    const res = await api.getActiveExaminers();
+    if (res.success) setAllExaminers(res.examiners || []);
+  };
+
+  const eligibleExaminers = allExaminers.filter((ex: any) =>
+    ex.qualifiedBadges?.some((qb: any) => qb.badgeName === app.badgeName)
+  );
+
+  const previewColor =
+    preview.severity === 'error' ? '#c62828' :
+    preview.severity === 'warn'  ? '#e65100' :
+    preview.valid                ? '#2e7d32' : '#666';
+
+  const previewBg =
+    preview.severity === 'error' ? '#ffebee' :
+    preview.severity === 'warn'  ? '#fff3e0' :
+    preview.valid                ? '#e8f5e9' : '#f5f5f5';
+
+  return (
+    <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '16px', background: '#fafafa' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', marginBottom: '12px' }}>
+        <div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap' }}>
+            <code style={{ background: '#003366', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>
+              {app.applicationId}
+            </code>
+            <span style={{
+              padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600,
+              background: app.status === '待團長確認' ? '#fff3e0' : '#e8f5e9',
+              color: app.status === '待團長確認' ? '#e65100' : '#2e7d32'
+            }}>
+              {app.status}
+            </span>
+          </div>
+          <div style={{ fontSize: '15px', fontWeight: 600, color: '#003366' }}>
+            {app.memberName} <span style={{ color: '#999', fontWeight: 400, fontSize: '13px' }}>({app.ymNumber})</span>
+          </div>
+          <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
+            🏕️ {app.groupId} · 🎖️ <strong>{app.badgeName}</strong>
+          </div>
+          <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
+            安排：{app.examArrangementType === 'SELF_APPLY' ? '自行報考' :
+                  app.examArrangementType === 'APPROVED_COURSE' ? '訓練班' :
+                  app.examArrangementType === 'EXAM_DAY' ? '考驗日' :
+                  app.examArrangementType === 'CERTIFICATE_EXCHANGE' ? '證書換領' : '其他'}
+            {app.selfExaminerName ? ` · 申請時選：${app.selfExaminerName}` : ''}
+          </div>
+        </div>
+
+        <div style={{ background: previewBg, padding: '10px', borderRadius: '6px', border: `1px solid ${previewColor}` }}>
+          <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>建議主考</div>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: previewColor }}>
+            {preview.label || '—'}
+          </div>
+          <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+            {preview.detail || ''}
+          </div>
+        </div>
+      </div>
+
+      {overrideMode && !isWaiting && (
+        <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', marginBottom: '10px' }}>
+          <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '6px' }}>
+            選擇其他主考（共 {eligibleExaminers.length} 位合資格）
+          </label>
+          <select
+            value={selectedExaminerId}
+            onChange={e => setSelectedExaminerId(e.target.value)}
+            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '13px' }}
+          >
+            <option value="">-- 請選擇 --</option>
+            {eligibleExaminers.map((ex: any) => {
+              const qb = ex.qualifiedBadges?.find((q: any) => q.badgeName === app.badgeName);
+              return (
+                <option key={ex.examinerId} value={ex.examinerId}>
+                  {ex.name} ({qb?.scope || '?'} 主考) · 負荷 {ex.currentLoad}/{ex.maxLoad} {ex.unit ? `· ${ex.unit}` : ''}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        {isWaiting ? (
+          <span style={{ color: '#999', fontSize: '13px', alignSelf: 'center' }}>
+            ⏳ 等待 {app.status === '待家長確認' ? '家長' : '團長'} 確認中
+          </span>
+        ) : (
+          <>
+            {!overrideMode && preview.mode !== 'no_examiner' && (
+              <button
+                onClick={() => { setOverrideMode(true); loadAllExaminers(); }}
+                disabled={loading}
+                style={{
+                  padding: '8px 14px', background: 'white', color: '#003366',
+                  border: '1px solid #003366', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
+                }}
+              >
+                🔄 改派其他主考
+              </button>
+            )}
+            {overrideMode && (
+              <>
+                <button
+                  onClick={() => { setOverrideMode(false); setSelectedExaminerId(''); }}
+                  disabled={loading}
+                  style={{
+                    padding: '8px 14px', background: '#999', color: 'white',
+                    border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
+                  }}
+                >
+                  取消改派
+                </button>
+                <button
+                  onClick={() => {
+                    if (!selectedExaminerId) { alert('請選擇主考'); return; }
+                    const ex = eligibleExaminers.find((e: any) => e.examinerId === selectedExaminerId);
+                    onApprove(app.applicationId, selectedExaminerId, ex?.name);
+                  }}
+                  disabled={loading || !selectedExaminerId}
+                  style={{
+                    padding: '8px 14px', background: selectedExaminerId ? '#1565c0' : '#ccc',
+                    color: 'white', border: 'none', borderRadius: '4px',
+                    cursor: selectedExaminerId ? 'pointer' : 'not-allowed', fontSize: '13px'
+                  }}
+                >
+                  ✅ 用選定主考批核
+                </button>
+              </>
+            )}
+            {!overrideMode && (
+              <button
+                onClick={() => onApprove(app.applicationId)}
+                disabled={loading || !preview.valid}
+                style={{
+                  padding: '8px 16px',
+                  background: preview.valid ? '#4caf50' : '#ccc',
+                  color: 'white', border: 'none', borderRadius: '4px',
+                  cursor: preview.valid ? 'pointer' : 'not-allowed', fontSize: '13px', fontWeight: 600
+                }}
+                title={!preview.valid ? '主考無效，請改派' : ''}
+              >
+                {preview.mode === 'no_examiner' ? '✅ 批核（不需主考）' : '✅ 確認批核'}
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -455,7 +594,7 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 
 function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
-    <button 
+    <button
       onClick={onClick}
       style={{
         padding: '8px 16px',
