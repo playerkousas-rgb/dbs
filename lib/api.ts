@@ -4,7 +4,8 @@
  */
 
 // 👇 你的 Web App URL
-const API_BASE = 'https://script.google.com/macros/s/AKfycbwoPUw609tUygwm5RxRKTtCDiAnXjGikYdwJACcTPNoJvPGYz7PN2hfiFx9d74Vi4NK/exec';
+const API_BASE = 'https://script.google.com/macros/s/AKfycbyfZC3g9h19ybPbMSKxL6s1M5hBZLHOXH7BEJ3zXhqtM2jAqwZkQZJ8aT5mTwG0Qr8/exec';
+
 
 // 1. GET 請求：用於讀取資料
 async function callGet(action: string, params?: Record<string, string>) {
