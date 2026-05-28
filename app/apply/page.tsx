@@ -98,7 +98,7 @@ export default function ApplyPage() {
   };
 
   const selectedGroup = groups.find(g => g.groupId === form.groupId);
-const selectedBadge = badges.find(b => b.fullTitle === form.badgeName);  // 👈 改用 fullTitle
+const selectedBadge = badges.find(b => b.fullTitle === form.badgeName);
   const badgeCategories = [...new Set(badges.map(b => b.category).filter(Boolean))];
   const filteredBadges = form.badgeCategory
     ? badges.filter(b => b.category === form.badgeCategory)
@@ -321,24 +321,24 @@ const selectedBadge = badges.find(b => b.fullTitle === form.badgeName);  // 👈
             </div>
             <div>
               <label style={labelStyle}>專章名稱 <span style={{ color: '#c62828' }}>*</span></label>
-              <select
-                value={form.badgeName}
-                required
-                onChange={e => {
-                  const sel = badges.find(b => b.badgeName === e.target.value);
-                  updateForm('badgeName', e.target.value);
-                  if (sel && !form.badgeCategory) updateForm('badgeCategory', sel.category);
-                  updateForm('selfExaminerName', '');
-                }}
-                style={selectStyle}
-              >
-                <option value="">請選擇專章...</option>
-                {filteredBadges.map(b => (
-                  <option key={b.badgeCode} value={b.badgeName}>
-                    {b.fullTitle || b.badgeName} ({b.badgeCode})
-                  </option>
-                ))}
-              </select>
+             <select
+  value={form.badgeName}
+  required
+  onChange={e => {
+    const sel = badges.find(b => b.fullTitle === e.target.value);  // 👈 改 fullTitle
+    updateForm('badgeName', e.target.value);
+    if (sel && !form.badgeCategory) updateForm('badgeCategory', sel.category);
+    updateForm('selfExaminerName', '');
+  }}
+  style={selectStyle}
+>
+  <option value="">請選擇專章...</option>
+  {filteredBadges.map(b => (
+    <option key={b.fullTitle} value={b.fullTitle}>  {/* 👈 key/value 都改 fullTitle */}
+      {b.fullTitle || b.badgeName} ({b.badgeCode})
+    </option>
+  ))}
+</select>
               {selectedBadge && (
                 <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                   {selectedBadge.badgeNameEn} · 代碼：{selectedBadge.badgeCode}
