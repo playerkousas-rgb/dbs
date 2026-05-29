@@ -8,8 +8,8 @@ interface Props {
 }
 
 /**
- * 童軍專科徽章證書（菱形綠）
- * 9 成的章都用這個（興趣/技能/服務/教導）
+ * 童軍專科徽章證書 — 標準版
+ * 根據成品圖修正座標
  */
 export function CertStandard({ data, showBg = true }: Props) {
   const fmtDate = (s: string) => {
@@ -19,96 +19,140 @@ export function CertStandard({ data, showBg = true }: Props) {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
   };
 
-  // 中文姓名 + 英文姓名（兩行）
-  const nameDisplay = [data.memberName || '', data.memberNameEn || ''].filter(Boolean).join('\n');
+  // ★ 清理數據：去除可能混入的「資料列」數字 (1-99)
+  const clean = (v: any) => {
+    if (typeof v === 'number' && v >= 1 && v <= 99) return '';
+    if (typeof v === 'string' && /^\d{1,2}$/.test(v.trim())) return '';
+    return String(v || '');
+  };
 
-  // 旅號（中文）
-  const groupDisplay = data.groupNameCn || data.groupId || '';
+  const memberName = clean(data.memberName) || data.memberName || '';
+  const memberNameEn = clean(data.memberNameEn) || '';
+  const groupNameCn = clean(data.groupNameCn) || data.groupName || '';
+  const badgeName = clean(data.badgeName) || '';
+  const badgeNameEn = clean(data.badgeNameEn) || '';
+  const category = clean(data.category) || '';
+  const categoryEn = clean(data.categoryEn) || '';
+  const certNo = clean(data.certificateNumber) || data.certificateNumber || '';
+  const resultDateStr = fmtDate(data.resultDate || data.readyAt || '');
 
-  // 專章中文 + 英文（標準章=Pursuit/Service/Interest/Instructor 不顯示英文章名直接顯示主章 badgeName）
-  const badgeName = data.badgeName || '';        // 例：觀察 / 手藝 (釘書)
-  const badgeNameEn = data.badgeNameEn || '';    // 例：Observer
-  const category = data.category || '';          // 技能
-  const categoryEn = data.categoryEn || 'Pursuit'; // Pursuit
-
-  // 簽署人
-  const signerCn = data.signerTitleCn || '楊德銘';
-  const signerEn = data.signerTitleEn || 'Yeung Tak Ming';
-
-  // 證書編號
-  const certNo = data.certificateNumber || '';
+  // 簽發人
+  const signerTitleCn = clean(data.signerTitleCn) || '楊德銘';
+  const signerTitleEn = clean(data.signerTitleEn) || 'Yeung Tak Ming';
+  const signerLabel = clean(data.signerLabelCn) || '助理區總監(童軍)';
 
   const fields: CertField[] = [
-    // 姓名（中英文）— 證書上方填名線
+    // 中文姓名 — 頂部「茲證明」下方
     {
-      text: nameDisplay,
-      left: 50, top: 27,
-      width: 70,
+      text: memberName,
+      left: 50, top: 26,
+      width: 60,
       size: 5,
+      weight: 600,
       align: 'center',
     },
-    // 旅號 — 「隸屬 / of」線
+    // 英文姓名 — 中文姓名下方
+    memberNameEn && {
+      text: memberNameEn,
+      left: 50, top: 31,
+      width: 60,
+      size: 3.5,
+      weight: 400,
+      align: 'center',
+      font: 'Times New Roman, serif',
+    },
+    // 旅號（中文）— 「隸屬 of」線
     {
-      text: groupDisplay,
-      left: 50, top: 40,
-      width: 70,
+      text: groupNameCn,
+      left: 50, top: 38,
+      width: 50,
       size: 4.5,
+      weight: 600,
       align: 'center',
     },
-    // 專章中文（觀察）
+    // 專章中文（左側）
     {
       text: badgeName,
-      left: 35, top: 53.5,
-      width: 30,
+      left: 36, top: 50,
+      width: 28,
       size: 4.5,
       weight: 600,
       align: 'center',
     },
-    // 專章英文（Observer）
+    // 專章英文
     {
       text: badgeNameEn,
-      left: 35, top: 59,
-      width: 30,
+      left: 36, top: 56,
+      width: 28,
       size: 4.5,
       weight: 700,
       align: 'center',
       font: 'Times New Roman, serif',
     },
-    // 組別中文（技能）
+    // 組別中文（右側）
     {
       text: category,
-      left: 62, top: 53.5,
+      left: 63, top: 50,
       width: 18,
       size: 4.5,
       weight: 600,
       align: 'center',
     },
-    // 組別英文（Pursuit）
+    // 組別英文
     {
       text: categoryEn,
-      left: 62, top: 59,
+      left: 63, top: 56,
       width: 18,
       size: 4.5,
       weight: 700,
       align: 'center',
       font: 'Times New Roman, serif',
     },
-    // 日期
+    // 日期 — 左下角
     {
-      text: fmtDate(data.resultDate || data.readyAt || ''),
-      left: 13, top: 73,
-      size: 4.5,
+      text: resultDateStr,
+      left: 12, top: 72,
+      size: 4,
       weight: 700,
       align: 'left',
     },
-    // 證書編號
+    // 證書編號 — 日期下方
     {
       text: certNo,
-      left: 6, top: 81,
+      left: 12, top: 77,
       size: 3.5,
       align: 'left',
+      font: 'monospace',
     },
-  ];
+    // 簽發人姓名 — 右下角
+    signerTitleCn && {
+      text: signerTitleCn,
+      left: 80, top: 68,
+      width: 20,
+      size: 4,
+      weight: 600,
+      align: 'center',
+    },
+    // 簽發人英文姓名
+    signerTitleEn && {
+      text: signerTitleEn,
+      left: 80, top: 73,
+      width: 20,
+      size: 3.2,
+      weight: 400,
+      align: 'center',
+      font: 'Times New Roman, serif',
+    },
+    // 簽發人職銜
+    signerLabel && {
+      text: signerLabel,
+      left: 80, top: 78,
+      width: 20,
+      size: 3,
+      weight: 400,
+      align: 'center',
+    },
+  ].filter(Boolean) as CertField[];
 
   return <CertBase bgUrl="/cert-bg/standard.jpg" fields={fields} showBg={showBg} />;
 }
