@@ -8,19 +8,7 @@ interface Props {
 }
 
 /**
- * ★ 清理數據：過濾 CertificatePrintList 欄 A（資料列編號 1-99）
- * 不使用 fallback，clean() 結果即最終值
- */
-function clean(v: any): string {
-  if (v === null || v === undefined) return '';
-  const s = String(v).trim();
-  if (/^\d{1,2}$/.test(s)) return '';
-  return s;
-}
-
-/**
  * 童軍專科徽章證書 — 標準版
- * 
  * 從 CertificatePrintList 讀取：
  *   D欄 = 中文姓名 (memberName)
  *   E欄 = 英文姓名 (memberNameEn)
@@ -33,20 +21,20 @@ export function CertStandard({ data, showBg = true }: Props) {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
   };
 
-  // ★ 從 CertificatePrintList D欄/E欄 讀取（經過 clean 過濾）
-  const memberName = clean(data.memberName);
-  const memberNameEn = clean(data.memberNameEn);
-  const groupNameCn = clean(data.groupNameCn) || clean(data.groupId);
-  const badgeName = clean(data.badgeName);
-  const badgeNameEn = clean(data.badgeNameEn);
-  const category = clean(data.category);
-  const categoryEn = clean(data.categoryEn);
-  const certNo = clean(data.certificateNumber);
+  // ★ 直接使用數據（不過濾，後端已從 CertificatePrintList D/E 欄正確讀取）
+  const memberName = String(data.memberName || '');
+  const memberNameEn = String(data.memberNameEn || '');
+  const groupNameCn = String(data.groupNameCn || data.groupId || '');
+  const badgeName = String(data.badgeName || '');
+  const badgeNameEn = String(data.badgeNameEn || '');
+  const category = String(data.category || '');
+  const categoryEn = String(data.categoryEn || '');
+  const certNo = String(data.certificateNumber || '');
   const resultDateStr = fmtDate(data.resultDate || data.readyAt || '');
 
   // ★ 簽發人精簡（只印中文姓名+職銜，不印英文）
-  const signerTitleCn = clean(data.signerTitleCn) || '楊德銘';
-  const signerLabelCn = clean(data.signerLabelCn) || '助理區總監(童軍)';
+  const signerTitleCn = String(data.signerTitleCn || '楊德銘');
+  const signerLabelCn = String(data.signerLabelCn || '助理區總監(童軍)');
 
   const fields: CertField[] = [
     // ★ 中文姓名 — CertificatePrintList D欄
