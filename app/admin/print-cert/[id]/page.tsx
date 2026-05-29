@@ -29,8 +29,14 @@ function PrintCertInner() {
     }
     api.getCertificate(certId, token)
       .then((res: any) => {
-        if (res.success) setCert(res.certificate);
-        else setError(res.error || '無法載入');
+        if (res.success) {
+          // ★ 簽發人精簡：如果 signerTitleCn 已包含職銜，則不另加 signerLabelCn
+          const c = res.certificate;
+          if (c.signerTitleCn && c.signerTitleCn.indexOf('楊德銘') >= 0) {
+            c.signerLabelCn = ''; // 不需要再加職銜
+          }
+          setCert(c);
+        } else setError(res.error || '無法載入');
       })
       .catch(() => setError('網路錯誤'))
       .finally(() => setLoading(false));
@@ -130,6 +136,11 @@ function PrintCertInner() {
         @media print {
           html, body { background: white; }
           .no-print { display: none !important; }
+          header, footer, nav, main { display: none !important; }
+          body > div > header { display: none !important; }
+          body > div > main { display: none !important; }
+          body > div > footer { display: none !important; }
+          [class*="no-print"] { display: none !important; }
           .cert-print-area { padding: 0; }
           .cert-page { box-shadow: none !important; }
           .cert-print-area.overlay-mode .cert-bg-image { display: none !important; }
