@@ -111,11 +111,11 @@ function PrintCertInner() {
 
       {/* 列印區 */}
       <div className={`cert-print-area ${overlayMode ? 'overlay-mode' : ''}`}>
-        {tpl === 'standard'  && <CertStandard {...props} />}
+        {tpl === 'standard' && <CertStandard {...props} />}
         {tpl === 'religious' && <CertReligious {...props} />}
         {tpl === 'community' && <CertCommunity {...props} />}
-        {tpl === 'sea'       && <CertSea {...props} />}
-        {tpl === 'air'       && <CertAir {...props} />}
+        {tpl === 'sea' && <CertSea {...props} />}
+        {tpl === 'air' && <CertAir {...props} />}
       </div>
 
       <style jsx global>{`
@@ -135,12 +135,13 @@ function PrintCertInner() {
         }
         @media print {
           html, body { background: white; }
-          .no-print { display: none !important; }
-          header, footer, nav, main { display: none !important; }
-          body > div > header { display: none !important; }
-          body > div > main { display: none !important; }
-          body > div > footer { display: none !important; }
+          .no-print,
           [class*="no-print"] { display: none !important; }
+
+          /* 只隱藏 layout 入面帶 .no-print 嘅 header/footer，唔好掃射 main/nav 標籤 */
+          body > header.no-print,
+          body > footer.no-print { display: none !important; }
+
           .cert-print-area { padding: 0; }
           .cert-page { box-shadow: none !important; }
           .cert-print-area.overlay-mode .cert-bg-image { display: none !important; }
