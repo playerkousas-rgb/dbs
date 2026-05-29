@@ -7,7 +7,10 @@ interface Props {
   showBg?: boolean;
 }
 
-/** 海上活動徽章證書 — 綠色海浪 */
+/**
+ * 童軍專科徽章證書 — 海事/水上活動類 (Sea)
+ * 根據最終尺規數據微調座標
+ */
 export function CertSea({ data, showBg = true }: Props) {
   const fmtDate = (s: string) => {
     if (!s) return '';
@@ -16,58 +19,124 @@ export function CertSea({ data, showBg = true }: Props) {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
   };
 
-  const nameDisplay = [data.memberName || '', data.memberNameEn || ''].filter(Boolean).join('\n');
-  const groupDisplay = data.groupNameCn || data.groupId || '';
-  const badgeName = data.badgeName || '';
-  const badgeNameEn = data.badgeNameEn || '';
-  const signerCn = data.signerTitleCn || '';
-  const signerEn = data.signerTitleEn || '';
-  const certNo = data.certificateNumber || '';
+  // 直接使用數據
+  const memberName = String(data.memberName || '');
+  const memberNameEn = String(data.memberNameEn || '');
+  const groupNameCn = String(data.groupNameCn || data.groupId || '');
+  const badgeName = String(data.badgeName || '');
+  const badgeNameEn = String(data.badgeNameEn || '');
+  const category = String(data.category || '');
+  const categoryEn = String(data.categoryEn || '');
+  const certNo = String(data.certificateNumber || '');
+  const resultDateStr = fmtDate(data.resultDate || data.readyAt || '');
+
+  // ★ 簽發人格式：楊德銘 Yeung Tak Ming + 助理區總監 (童軍)
+  const signerLine1 = "楊德銘 Yeung Tak Ming";
+  const signerLine2 = "助理區總監 (童軍)";
 
   const fields: CertField[] = [
-    {
-      text: nameDisplay,
-      left: 42, top: 28,
-      width: 55,
+    // 1. 中文姓名 — Top 36%
+    memberName && {
+      text: memberName,
+      left: 50, top: 36,
+      width: 50,
       size: 5,
+      weight: 600,
       align: 'center',
     },
-    {
-      text: groupDisplay,
-      left: 42, top: 42,
-      width: 55,
-      size: 4.5,
+    // 2. 英文姓名 — Top 40%
+    memberNameEn && {
+      text: memberNameEn,
+      left: 50, top: 40,
+      width: 50,
+      size: 3.5,
+      weight: 400,
       align: 'center',
+      font: 'Times New Roman, serif',
     },
-    {
-      text: `${badgeName}  ${badgeNameEn}`.trim(),
-      left: 42, top: 56,
+    // 3. 旅號 — Top 48%
+    groupNameCn && {
+      text: groupNameCn,
+      left: 50, top: 48,
       width: 50,
       size: 4.5,
       weight: 600,
       align: 'center',
     },
-    {
-      text: fmtDate(data.resultDate || data.readyAt || ''),
-      left: 13, top: 72,
+    // 4. 專章中文 — Top 62% (Left 38%)
+    badgeName && {
+      text: badgeName,
+      left: 38, top: 62,
+      width: 26,
       size: 4.5,
+      weight: 600,
+      align: 'center',
+    },
+    // 5. 專章英文 — Top 66% (Left 38%)
+    badgeNameEn && {
+      text: badgeNameEn,
+      left: 38, top: 66,
+      width: 26,
+      size: 4.5,
+      weight: 700,
+      align: 'center',
+      font: 'Times New Roman, serif',
+    },
+    // 6. 組別中文 — Top 62% (Left 58%)
+    category && {
+      text: category,
+      left: 58, top: 62,
+      width: 20,
+      size: 4.5,
+      weight: 600,
+      align: 'center',
+    },
+    // 7. 組別英文 — Top 66% (Left 58%)
+    categoryEn && {
+      text: categoryEn,
+      left: 58, top: 66,
+      width: 20,
+      size: 4.5,
+      weight: 700,
+      align: 'center',
+      font: 'Times New Roman, serif',
+    },
+    // 8. 日期 — Top 80%
+    resultDateStr && {
+      text: resultDateStr,
+      left: 12, top: 80,
+      size: 4,
       weight: 700,
       align: 'left',
     },
-    {
+    // 9. 證書編號 — Top 85%
+    certNo && {
       text: certNo,
-      left: 6, top: 79,
+      left: 12, top: 85,
       size: 3.5,
       align: 'left',
+      font: 'monospace',
     },
+    // 10. 簽發人姓名 — Top 85% (Left 78%)
     {
-      text: `${signerCn} ${signerEn}`.trim(),
-      left: 72, top: 72,
-      width: 28,
-      size: 3.5,
+      text: signerLine1,
+      left: 78, top: 85,
+      width: 22,
+      size: 3.2,
+      weight: 600,
       align: 'center',
     },
-  ];
+    // 11. 簽發人職銜 — Top 89% (Left 78%)
+    {
+      text: signerLine2,
+      left: 78, top: 89,
+      width: 22,
+      size: 3,
+      weight: 400,
+      align: 'center',
+    },
+  ].filter(Boolean) as CertField[];
 
+  // ★ Sea 類別使用 sea.jpg 背景
   return <CertBase bgUrl="/cert-bg/sea.jpg" fields={fields} showBg={showBg} />;
 }
