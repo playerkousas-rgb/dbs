@@ -32,9 +32,22 @@ export function CertStandard({ data, showBg = true }: Props) {
   const certNo = String(data.certificateNumber || '');
   const resultDateStr = fmtDate(data.resultDate || data.readyAt || '');
 
-  // ★ 簽發人精簡（只印中文姓名+職銜，不印英文）
-  const signerTitleCn = String(data.signerTitleCn || '楊德銘');
-  const signerLabelCn = String(data.signerLabelCn || '助理區總監(童軍)');
+  // ★ 簽發人：檢查是否已包含完整資訊
+  const signerTitleCn = String(data.signerTitleCn || '');
+  const signerTitleEn = String(data.signerTitleEn || '');
+  const signerLabelCn = String(data.signerLabelCn || '');
+  
+  // 如果 signerTitleCn 已經是完整格式（包含姓名和職銜），直接使用
+  let signerText = '';
+  if (signerTitleCn && signerTitleEn) {
+    signerText = `${signerTitleCn} ${signerTitleEn}`;
+  } else if (signerTitleCn) {
+    signerText = signerTitleCn;
+  } else if (signerTitleEn) {
+    signerText = signerTitleEn;
+  } else if (signerLabelCn) {
+    signerText = signerLabelCn;
+  }
 
   const fields: CertField[] = [
     // ★ 中文姓名 — CertificatePrintList D欄
@@ -119,15 +132,14 @@ export function CertStandard({ data, showBg = true }: Props) {
       align: 'left',
       font: 'monospace',
     },
-    // ★ 簽發人（精簡：只印中文姓名+職銜）
-    {
-      text: `${signerTitleCn}\n${signerLabelCn}`,
+    // ★ 簽發人（單一欄位，不重複）
+    signerText && {
+      text: signerText,
       left: 76, top: 82,
       width: 24,
-      size: 3.5,
+      size: 3.2,
       weight: 600,
       align: 'center',
-      lineHeight: 1.3,
     },
   ].filter(Boolean) as CertField[];
 
