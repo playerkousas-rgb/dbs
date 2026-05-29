@@ -9,9 +9,7 @@ interface Props {
 
 /**
  * 童軍專科徽章證書 — 標準版
- * 從 CertificatePrintList 讀取：
- *   D欄 = 中文姓名 (memberName)
- *   E欄 = 英文姓名 (memberNameEn)
+ * 根據最終尺規數據微調座標
  */
 export function CertStandard({ data, showBg = true }: Props) {
   const fmtDate = (s: string) => {
@@ -21,7 +19,7 @@ export function CertStandard({ data, showBg = true }: Props) {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
   };
 
-  // ★ 直接使用數據（不過濾，後端已從 CertificatePrintList D/E 欄正確讀取）
+  // 直接使用數據
   const memberName = String(data.memberName || '');
   const memberNameEn = String(data.memberNameEn || '');
   const groupNameCn = String(data.groupNameCn || data.groupId || '');
@@ -32,18 +30,12 @@ export function CertStandard({ data, showBg = true }: Props) {
   const certNo = String(data.certificateNumber || '');
   const resultDateStr = fmtDate(data.resultDate || data.readyAt || '');
 
-  // ★ 簽發人：只取姓名，不含職銜
-  const signerName = String(data.signerName || '楊德銘');
-  const signerNameEn = String(data.signerNameEn || 'Yeung Tak Ming');
-  const signerLabel = String(data.signerLabel || '助理區總監(童軍)');
-  
-  // 組合簽發人文字：「楊德銘 Yeung Tak Ming」
-  const signerText = signerName && signerNameEn
-    ? `${signerName} ${signerNameEn}`
-    : signerName || signerNameEn || '';
+  // ★ 簽發人格式：楊德銘 Yeung Tak Ming + 助理區總監(童軍)
+  const signerLine1 = "楊德銘 Yeung Tak Ming";
+  const signerLine2 = "助理區總監(童軍)";
 
   const fields: CertField[] = [
-    // ★ 中文姓名 — CertificatePrintList D欄（下移 2mm）
+    // 1. 中文姓名 — 下移 2mm (Top 36%)
     memberName && {
       text: memberName,
       left: 50, top: 36,
@@ -52,17 +44,17 @@ export function CertStandard({ data, showBg = true }: Props) {
       weight: 600,
       align: 'center',
     },
-    // ★ 英文姓名 — CertificatePrintList E欄
+    // 2. 英文姓名 (Top 42%)
     memberNameEn && {
       text: memberNameEn,
-      left: 50, top: 40,
+      left: 50, top: 42,
       width: 50,
       size: 3.5,
       weight: 400,
       align: 'center',
       font: 'Times New Roman, serif',
     },
-    // ★ 旅號
+    // 3. 旅號 (Top 48%)
     groupNameCn && {
       text: groupNameCn,
       left: 50, top: 48,
@@ -71,7 +63,7 @@ export function CertStandard({ data, showBg = true }: Props) {
       weight: 600,
       align: 'center',
     },
-    // ★ 專章中文（左側）（下移 2mm）
+    // 4. 專章中文 — 下移 2mm (Top 62%)
     badgeName && {
       text: badgeName,
       left: 36, top: 62,
@@ -80,65 +72,65 @@ export function CertStandard({ data, showBg = true }: Props) {
       weight: 600,
       align: 'center',
     },
-    // ★ 專章英文
+    // 5. 專章英文 (Top 68%)
     badgeNameEn && {
       text: badgeNameEn,
-      left: 36, top: 66,
+      left: 36, top: 68,
       width: 26,
       size: 4.5,
       weight: 700,
       align: 'center',
       font: 'Times New Roman, serif',
     },
-    // ★ 組別中文（右側）（左移 1cm + 下移 2mm）
+    // 6. 組別中文 — 左移至 11.5cm (Left 55%)，下移 2mm (Top 62%)
     category && {
       text: category,
-      left: 59, top: 62,
+      left: 58, top: 62,
       width: 20,
       size: 4.5,
       weight: 600,
       align: 'center',
     },
-    // ★ 組別英文（左移 1cm + 下移 2mm）
+    // 7. 組別英文 (Left 58%, Top 68%)
     categoryEn && {
       text: categoryEn,
-      left: 59, top: 66,
+      left: 58, top: 68,
       width: 20,
       size: 4.5,
       weight: 700,
       align: 'center',
       font: 'Times New Roman, serif',
     },
-    // ★ 日期（加回：編號上方 5mm）
+    // 8. 日期 — 加回編號上方 5mm (Top 78%)
     resultDateStr && {
       text: resultDateStr,
-      left: 12, top: 82,
+      left: 12, top: 78,
       size: 4,
       weight: 700,
       align: 'left',
     },
-    // ★ 證書編號
+    // 9. 證書編號 — 下移 (Top 83%)
     certNo && {
       text: certNo,
-      left: 12, top: 87,
+      left: 12, top: 83,
       size: 3.5,
       align: 'left',
       font: 'monospace',
     },
-    // ★ 簽發人姓名（下移 4mm，顯示「楊德銘 Yeung Tak Ming」）
-    signerText && {
-      text: signerText,
-      left: 76, top: 86,
-      width: 24,
-      size: 3.5,
+    // 10. 簽發人 — 下移 4mm (Top 85%)
+    {
+      text: signerLine1,
+      left: 78, top: 85,
+      width: 22,
+      size: 3.2,
       weight: 600,
       align: 'center',
     },
-    // ★ 簽發人職銜（姓名下方 1-2mm）
-    signerLabel && {
-      text: signerLabel,
-      left: 76, top: 90,
-      width: 24,
+    // 11. 簽發人職銜 — 下方 1-2mm (Top 90%)
+    {
+      text: signerLine2,
+      left: 78, top: 90,
+      width: 22,
       size: 3,
       weight: 400,
       align: 'center',
