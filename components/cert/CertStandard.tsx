@@ -32,28 +32,21 @@ export function CertStandard({ data, showBg = true }: Props) {
   const certNo = String(data.certificateNumber || '');
   const resultDateStr = fmtDate(data.resultDate || data.readyAt || '');
 
-  // ★ 簽發人：檢查是否已包含完整資訊
-  const signerTitleCn = String(data.signerTitleCn || '');
-  const signerTitleEn = String(data.signerTitleEn || '');
-  const signerLabelCn = String(data.signerLabelCn || '');
+  // ★ 簽發人：只取姓名，不含職銜
+  const signerName = String(data.signerName || '楊德銘');
+  const signerNameEn = String(data.signerNameEn || 'Yeung Tak Ming');
+  const signerLabel = String(data.signerLabel || '助理區總監(童軍)');
   
-  // 如果 signerTitleCn 已經是完整格式（包含姓名和職銜），直接使用
-  let signerText = '';
-  if (signerTitleCn && signerTitleEn) {
-    signerText = `${signerTitleCn} ${signerTitleEn}`;
-  } else if (signerTitleCn) {
-    signerText = signerTitleCn;
-  } else if (signerTitleEn) {
-    signerText = signerTitleEn;
-  } else if (signerLabelCn) {
-    signerText = signerLabelCn;
-  }
+  // 組合簽發人文字：「楊德銘 Yeung Tak Ming」
+  const signerText = signerName && signerNameEn
+    ? `${signerName} ${signerNameEn}`
+    : signerName || signerNameEn || '';
 
   const fields: CertField[] = [
-    // ★ 中文姓名 — CertificatePrintList D欄
+    // ★ 中文姓名 — CertificatePrintList D欄（下移 2mm）
     memberName && {
       text: memberName,
-      left: 50, top: 34,
+      left: 50, top: 36,
       width: 50,
       size: 5,
       weight: 600,
@@ -78,10 +71,10 @@ export function CertStandard({ data, showBg = true }: Props) {
       weight: 600,
       align: 'center',
     },
-    // ★ 專章中文（左側）
+    // ★ 專章中文（左側）（下移 2mm）
     badgeName && {
       text: badgeName,
-      left: 36, top: 60,
+      left: 36, top: 62,
       width: 26,
       size: 4.5,
       weight: 600,
@@ -97,26 +90,26 @@ export function CertStandard({ data, showBg = true }: Props) {
       align: 'center',
       font: 'Times New Roman, serif',
     },
-    // ★ 組別中文（右側）
+    // ★ 組別中文（右側）（左移 1cm + 下移 2mm）
     category && {
       text: category,
-      left: 64, top: 60,
+      left: 59, top: 62,
       width: 20,
       size: 4.5,
       weight: 600,
       align: 'center',
     },
-    // ★ 組別英文
+    // ★ 組別英文（左移 1cm + 下移 2mm）
     categoryEn && {
       text: categoryEn,
-      left: 64, top: 66,
+      left: 59, top: 66,
       width: 20,
       size: 4.5,
       weight: 700,
       align: 'center',
       font: 'Times New Roman, serif',
     },
-    // ★ 日期
+    // ★ 日期（加回：編號上方 5mm）
     resultDateStr && {
       text: resultDateStr,
       left: 12, top: 82,
@@ -132,13 +125,22 @@ export function CertStandard({ data, showBg = true }: Props) {
       align: 'left',
       font: 'monospace',
     },
-    // ★ 簽發人（單一欄位，不重複）
+    // ★ 簽發人姓名（下移 4mm，顯示「楊德銘 Yeung Tak Ming」）
     signerText && {
       text: signerText,
-      left: 76, top: 82,
+      left: 76, top: 86,
       width: 24,
-      size: 3.2,
+      size: 3.5,
       weight: 600,
+      align: 'center',
+    },
+    // ★ 簽發人職銜（姓名下方 1-2mm）
+    signerLabel && {
+      text: signerLabel,
+      left: 76, top: 90,
+      width: 24,
+      size: 3,
+      weight: 400,
       align: 'center',
     },
   ].filter(Boolean) as CertField[];
