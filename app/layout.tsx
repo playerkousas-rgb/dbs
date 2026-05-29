@@ -24,9 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main style={{ maxWidth: '960px', margin: '0 auto', padding: '24px' }}>
           {children}
         </main>
-        <footer style={{ textAlign: 'center', padding: '24px', color: '#666', fontSize: '13px' }}>
-          © 筲箕灣區童軍 · 專科徽章管理系統 v2.1
-        </footer>
+       // 只需要在 footer 加上 className="no-print"
+<footer className="no-print" style={{ textAlign: 'center', padding: '24px', color: '#666', fontSize: '13px' }}>
+  © 筲箕灣區童軍 · 專科徽章管理系統 v2.1
+</footer>
       </body>
     </html>
   );
