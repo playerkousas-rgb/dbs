@@ -134,15 +134,26 @@ function PrintCertInner() {
           padding: 20px;
         }
         @media print {
-          html, body { background: white; }
+          html, body {
+            background: white;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          /* ★ 清掉 layout.tsx <main> 嘅 padding / maxWidth，防止證書被推落 */
+          main, body > main {
+            margin: 0 !important;
+            padding: 0 !important;
+            max-width: none !important;
+          }
           .no-print,
           [class*="no-print"] { display: none !important; }
-
-          /* 只隱藏 layout 入面帶 .no-print 嘅 header/footer，唔好掃射 main/nav 標籤 */
           body > header.no-print,
           body > footer.no-print { display: none !important; }
 
-          .cert-print-area { padding: 0; }
+          .cert-print-area {
+            padding: 0;
+            margin: 0 !important;
+          }
           .cert-page { box-shadow: none !important; }
           .cert-print-area.overlay-mode .cert-bg-image { display: none !important; }
         }
