@@ -1,5 +1,10 @@
 /**
- * API 呼叫封裝 (v3.8 - cert print + admin cert management)
+ * API 呼叫封裝 (v3.10 - 修復 CertificateQueue / CertificatePrintList 同步)
+ *
+ * 修復內容：
+ * 1. recordPrintAction() — 接受完整 certData，傳給後端更新 CertificateQueue
+ * 2. syncCertificatePrintList() — 接受完整 certData，傳給後端寫入 CertificatePrintList
+ * 3. 確保 print-cert/[id] 和 examiner 頁面傳遞的資料能到達後端
  */
 
 const API_BASE = 'https://script.google.com/macros/s/AKfycbyfZC3g9h19ybPbMSKxL6s1M5hBZLHOXH7BEJ3zXhqtM2jAqwZkQZJ8aT5mTwG0Qr8/exec';
@@ -99,7 +104,37 @@ export const api = {
     callPost('reprintCertificate', { staffToken, applicationId }),
 
   submitExaminerApplication: (data: any) =>
-    callPost('submitExaminerApplication', data)
+    callPost('submitExaminerApplication', data),
+
+  // ★★★ v3.10 修復：列印記錄同步（可接收完整證書資料）★★★
+  /**
+   * 記錄列印動作 → 更新 CertificateQueue
+   * @param staffToken - 管理密鑰
+   * @param certificateId - 證書 ID
+   * @param certData - (可選) 完整證書資料 { memberName, badgeName, groupId, applicationId, certificateNumber, resultDate, ... }
+   *                   後端收到後寫入 CertificateQueue 對應欄位
+   */
+  recordPrintAction: (staffToken: string, certificateId: string, certData?: any) =>
+    callPost('recordPrintAction', {
+      staffToken,
+      certificateId,
+      certData: certData || {}
+    }),
+
+  /**
+   * 同步 CertificatePrintList（確保列印清單有完整資料）
+   * @param staffToken - 管理密鑰（可傳空字串，由後端判斷權限）
+   * @param applicationId - 申請編號
+   * @param certData - (可選) 完整證書資料 { memberName, memberNameEn, groupId, groupNameCn,
+   *                   badgeName, badgeNameEn, badgeCode, category, certificateNumber, resultDate }
+   *                   後端收到後寫入 CertificatePrintList
+   */
+  syncCertificatePrintList: (staffToken: string, applicationId: string, certData?: any) =>
+    callPost('syncCertificatePrintList', {
+      staffToken,
+      applicationId,
+      certData: certData || {}
+    }),
 };
 
 export { API_BASE };
