@@ -12,6 +12,8 @@ export default function AdminPage() {
   const [printList, setPrintList] = useState<any[]>([]);
   const [examiners, setExaminers] = useState<any[]>([]);
   const [badges, setBadges] = useState<any[]>([]);
+  const [certs, setCerts] = useState<any[]>([]);
+  const [certFilter, setCertFilter] = useState<'all' | 'pending' | 'ready' | 'picked'>('all');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -79,6 +81,18 @@ export default function AdminPage() {
     setLoading(false);
   };
 
+  const loadCerts = async () => {
+    setLoading(true);
+    try {
+      const res = await api.adminGetCertificates(token);
+      if (res.success) setCerts(res.certificates || []);
+      else setMessage('載入失敗：' + (res.error || ''));
+    } catch (e) {
+      setMessage('網絡錯誤');
+    }
+    setLoading(false);
+  };
+
   const approve = async (appId: string, overrideExaminerId?: string, examinerName?: string) => {
     const app = pendingApps.find(a => a.applicationId === appId);
     const preview = app?.examinerPreview;
@@ -110,6 +124,46 @@ export default function AdminPage() {
     setLoading(false);
   };
 
+  const handleMarkReady = async (certId: string, memberName: string) => {
+    if (!confirm(`確定將 ${memberName} 的證書標記為「已製作完成」？\n系統會自動：\n- 加進證書列印清單\n- 通知考生來領取\n- 顯示在公開待領頁`)) return;
+    setLoading(true);
+    try {
+      const res = await api.markCertificateReady(token, certId);
+      if (res.success) {
+        setMessage(`✅ 已標記完成，證書編號：${res.certificateNumber}`);
+        loadCerts();
+      } else {
+        setMessage('❌ ' + (res.error || '失敗'));
+      }
+    } catch {
+      setMessage('網絡錯誤');
+    }
+    setLoading(false);
+  };
+
+  const handleMarkPicked = async (certId: string, memberName: string) => {
+    const pickedBy = prompt(`領取人姓名（預設：${memberName}）`, memberName);
+    if (pickedBy === null) return;
+    setLoading(true);
+    try {
+      const res = await api.markCertificatePickedUp(token, certId, pickedBy || memberName);
+      if (res.success) {
+        setMessage(`✅ ${memberName} 已標記領取`);
+        loadCerts();
+      } else {
+        setMessage('❌ ' + (res.error || '失敗'));
+      }
+    } catch {
+      setMessage('網絡錯誤');
+    }
+    setLoading(false);
+  };
+
+  const openPrint = (certId: string) => {
+    const url = `/admin/print-cert/${encodeURIComponent(certId)}?token=${encodeURIComponent(token)}`;
+    window.open(url, '_blank');
+  };
+
   if (!loggedIn) {
     return (
       <div style={{ background: 'white', padding: '32px', borderRadius: '12px', maxWidth: '400px', margin: '0 auto' }}>
@@ -136,6 +190,14 @@ export default function AdminPage() {
       </div>
     );
   }
+
+  const filteredCerts = certs.filter(c => {
+    if (certFilter === 'all') return true;
+    if (certFilter === 'pending') return c.printStatus === 'PENDING_PRINT';
+    if (certFilter === 'ready') return c.printStatus === 'READY';
+    if (certFilter === 'picked') return c.printStatus === 'PICKED_UP';
+    return true;
+  });
 
   return (
     <div>
@@ -168,8 +230,8 @@ export default function AdminPage() {
       <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <TabButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} label="總覽" />
         <TabButton active={activeTab === 'pending'} onClick={() => { setActiveTab('pending'); loadPending(); }} label="待批核" />
-        <TabButton active={activeTab === 'printList'} onClick={() => { setActiveTab('printList'); loadPrintList(); }} label="列印" />
-        <TabButton active={activeTab === 'certificates'} onClick={() => setActiveTab('certificates')} label="證書" />
+        <TabButton active={activeTab === 'certificates'} onClick={() => { setActiveTab('certificates'); loadCerts(); }} label="🏆 證書管理" />
+        <TabButton active={activeTab === 'printList'} onClick={() => { setActiveTab('printList'); loadPrintList(); }} label="📋 列印清單" />
         <TabButton active={activeTab === 'examiners'} onClick={() => { setActiveTab('examiners'); loadExaminers(); }} label="主考名單" />
         <TabButton active={activeTab === 'badges'} onClick={() => { setActiveTab('badges'); loadBadges(); }} label="專章代碼" />
       </div>
@@ -197,11 +259,48 @@ export default function AdminPage() {
         </div>
       )}
 
+      {activeTab === 'certificates' && (
+        <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
+          <h3 style={{ color: '#003366', marginTop: 0 }}>🏆 證書管理</h3>
+          <p style={{ color: '#666', fontSize: '13px', marginTop: 0 }}>
+            點「🖨️ 列印」會開新分頁顯示證書 → 用瀏覽器 Ctrl+P 列印（可套印預印紙）
+          </p>
+
+          {/* 篩選 */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <FilterChip label="全部" active={certFilter === 'all'} onClick={() => setCertFilter('all')} count={certs.length} />
+            <FilterChip label="待製作" active={certFilter === 'pending'} onClick={() => setCertFilter('pending')} color="#ff9800" count={certs.filter(c => c.printStatus === 'PENDING_PRINT').length} />
+            <FilterChip label="待領取" active={certFilter === 'ready'} onClick={() => setCertFilter('ready')} color="#4caf50" count={certs.filter(c => c.printStatus === 'READY').length} />
+            <FilterChip label="已領取" active={certFilter === 'picked'} onClick={() => setCertFilter('picked')} color="#666" count={certs.filter(c => c.printStatus === 'PICKED_UP').length} />
+            <button onClick={loadCerts} style={{ marginLeft: 'auto', padding: '6px 12px', background: 'white', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
+              🔄 重新載入
+            </button>
+          </div>
+
+          {filteredCerts.length === 0 ? (
+            <p style={{ color: '#666' }}>沒有資料</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {filteredCerts.map((c, idx) => (
+                <CertCard
+                  key={idx}
+                  cert={c}
+                  onMarkReady={handleMarkReady}
+                  onMarkPicked={handleMarkPicked}
+                  onPrint={openPrint}
+                  loading={loading}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'printList' && (
         <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
-          <h3 style={{ color: '#003366', marginTop: 0 }}>🖨️ 證書列印清單</h3>
+          <h3 style={{ color: '#003366', marginTop: 0 }}>📋 證書列印清單（CSV / Word 合併列印用）</h3>
           <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
-            此清單的資料可用於 Word 合併列印。證書模版根據專章類別自動匹配。
+            如需大量列印或用 Word 合併列印，可從此清單取得資料。
           </p>
           {printList.length === 0 ? (
             <p style={{ color: '#666' }}>列印清單為空</p>
@@ -244,22 +343,19 @@ export default function AdminPage() {
         <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
           <h3 style={{ color: '#003366', marginTop: 0 }}>👨‍🏫 主考名單（動態讀取）</h3>
           <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
-            資料來源：ExaminerMatrix → Examiners（自動同步）。<strong style={{ color: '#1565c0' }}>D</strong> = 區主考（接受區內所有旅團），
-            <strong style={{ color: '#e65100' }}>G</strong> = 旅團主考（只限本旅團）。
+            資料來源：ExaminerMatrix → Examiners（自動同步）。<strong style={{ color: '#1565c0' }}>D</strong> = 區主考，
+            <strong style={{ color: '#e65100' }}>G</strong> = 旅團主考。
           </p>
-
-          {examiners.length === 0 ? (
-            <p style={{ color: '#666' }}>載入中或沒有主考資料...</p>
-          ) : (
+          {examiners.length === 0 ? <p>載入中或沒有資料...</p> : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
                   <tr style={{ background: '#003366', color: 'white' }}>
                     <th style={{ padding: '8px', textAlign: 'left' }}>姓名</th>
                     <th style={{ padding: '8px', textAlign: 'left' }}>單位</th>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>區主考 (D) 專章</th>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>旅團主考 (G) 專章</th>
-                    <th style={{ padding: '8px', textAlign: 'center' }}>總計</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>D 專章</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>G 專章</th>
+                    <th style={{ padding: '8px', textAlign: 'center' }}>負荷</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -271,12 +367,7 @@ export default function AdminPage() {
                         {ex.districtBadges.length > 0 ? (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
                             {ex.districtBadges.map((b: string, bi: number) => (
-                              <span key={bi} style={{
-                                display: 'inline-block', padding: '1px 6px', borderRadius: '3px',
-                                fontSize: '11px', background: '#e3f2fd', color: '#1565c0'
-                              }}>
-                                {b}
-                              </span>
+                              <span key={bi} style={{ padding: '1px 6px', borderRadius: '3px', fontSize: '11px', background: '#e3f2fd', color: '#1565c0' }}>{b}</span>
                             ))}
                           </div>
                         ) : '—'}
@@ -285,19 +376,12 @@ export default function AdminPage() {
                         {ex.groupBadges.length > 0 ? (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
                             {ex.groupBadges.map((b: string, bi: number) => (
-                              <span key={bi} style={{
-                                display: 'inline-block', padding: '1px 6px', borderRadius: '3px',
-                                fontSize: '11px', background: '#fff3e0', color: '#e65100'
-                              }}>
-                                {b}
-                              </span>
+                              <span key={bi} style={{ padding: '1px 6px', borderRadius: '3px', fontSize: '11px', background: '#fff3e0', color: '#e65100' }}>{b}</span>
                             ))}
                           </div>
                         ) : '—'}
                       </td>
-                      <td style={{ padding: '8px', textAlign: 'center', fontWeight: 700 }}>
-                        {ex.totalBadgeCount}
-                      </td>
+                      <td style={{ padding: '8px', textAlign: 'center', fontWeight: 700 }}>{ex.currentLoad}/{ex.maxLoad}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -309,21 +393,14 @@ export default function AdminPage() {
 
       {activeTab === 'badges' && (
         <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
-          <h3 style={{ color: '#003366', marginTop: 0 }}>🎖️ 專章代碼表（動態讀取自 BadgeCodes 工作表）</h3>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
-            直接從 Google Sheet 的 BadgeCodes 分頁讀取。更新 Sheet 後此頁面會自動反映更改，無需改程式碼。
-          </p>
-
-          {badges.length === 0 ? (
-            <p style={{ color: '#666' }}>載入中或沒有專章資料...</p>
-          ) : (
+          <h3 style={{ color: '#003366', marginTop: 0 }}>🎖️ 專章代碼表</h3>
+          {badges.length === 0 ? <p>載入中...</p> : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
                   <tr style={{ background: '#003366', color: 'white' }}>
                     <th style={{ padding: '8px', textAlign: 'left' }}>代碼</th>
                     <th style={{ padding: '8px', textAlign: 'left' }}>中文名稱</th>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>英文名稱</th>
                     <th style={{ padding: '8px', textAlign: 'left' }}>類別</th>
                     <th style={{ padding: '8px', textAlign: 'left' }}>完整名稱</th>
                   </tr>
@@ -333,84 +410,22 @@ export default function AdminPage() {
                     <tr key={idx} style={{ borderBottom: '1px solid #eee', background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
                       <td style={{ padding: '8px', fontFamily: 'monospace', fontWeight: 600 }}>{b.badgeCode}</td>
                       <td style={{ padding: '8px' }}>{b.badgeName}</td>
-                      <td style={{ padding: '8px', color: '#666' }}>{b.badgeNameEn}</td>
-                      <td style={{ padding: '8px' }}>
-                        <span style={{
-                          padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600,
-                          background: b.category === '興趣' ? '#e8f5e9' :
-                                     b.category === '技能' ? '#e3f2fd' :
-                                     b.category === '服務' ? '#fff3e0' :
-                                     b.category === '教導' ? '#f3e5f5' : '#f5f5f5',
-                          color: b.category === '興趣' ? '#2e7d32' :
-                                 b.category === '技能' ? '#1565c0' :
-                                 b.category === '服務' ? '#e65100' :
-                                 b.category === '教導' ? '#7b1fa2' : '#666'
-                        }}>
-                          {b.category || '其他'}
-                        </span>
-                      </td>
+                      <td style={{ padding: '8px' }}>{b.category}</td>
                       <td style={{ padding: '8px' }}>{b.fullTitle}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <p style={{ marginTop: '12px', fontSize: '13px', color: '#666' }}>
-                共 {badges.length} 個有效專章
-              </p>
+              <p style={{ marginTop: '12px', fontSize: '13px', color: '#666' }}>共 {badges.length} 個</p>
             </div>
           )}
-        </div>
-      )}
-
-      {activeTab === 'certificates' && (
-        <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
-          <h3 style={{ color: '#003366', marginTop: 0 }}>🏆 證書管理</h3>
-          <p style={{ color: '#666', fontSize: '14px' }}>
-            此頁面顯示「考核合格待製證書」及「已製作待領取」的證書。
-          </p>
-
-          <div style={{ background: '#e3f2fd', padding: '16px', borderRadius: '8px', marginTop: '16px' }}>
-            <h4 style={{ margin: '0 0 8px', color: '#003366' }}>📋 證書模版說明</h4>
-            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#333' }}>
-              <li><strong>興趣/技能/服務/教導</strong>：使用同一種 Word 合併列印模版</li>
-              <li><strong>其他特殊章</strong>（社區參與、航空、海事等）：使用各自的專屬模版</li>
-              <li>證書編號格式：<code style={{ background: '#f5f5f5', padding: '2px 6px', borderRadius: '3px' }}>[Badge Code]/HKIR/[Year]/SKW/[Seq]</code></li>
-            </ul>
-          </div>
-
-          <div style={{ background: '#fff3e0', padding: '16px', borderRadius: '8px', marginTop: '16px' }}>
-            <h4 style={{ margin: '0 0 8px', color: '#e65100' }}>⚠️ 操作提示</h4>
-            <p style={{ margin: 0, fontSize: '14px' }}>
-              製作證書後，請於 Google Sheet 的 <strong>CertificateQueue</strong> 工作表將狀態從「待製作」改為「待領取」。
-              系統將自動通知考生。
-            </p>
-          </div>
         </div>
       )}
 
       {activeTab === 'dashboard' && (
         <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
           <h3 style={{ color: '#003366', marginTop: 0 }}>📈 系統概覽</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <InfoCard
-              title="資料來源"
-              items={[
-                '專章代碼：BadgeCodes 工作表（動態讀取）',
-                '主考名單：ExaminerMatrix → Examiners',
-                '旅團資料：Groups 工作表',
-                '申請紀錄：Applications 工作表'
-              ]}
-            />
-            <InfoCard
-              title="更新方式"
-              items={[
-                '更新專章代碼：直接編輯 BadgeCodes Sheet',
-                '更新主考資格：直接編輯 ExaminerMatrix Sheet',
-                '更新旅團資料：直接編輯 Groups Sheet',
-                '無需修改程式碼，前端自動反映'
-              ]}
-            />
-          </div>
+          <p style={{ color: '#666' }}>點上方分頁查看各項管理功能。</p>
         </div>
       )}
     </div>
@@ -418,7 +433,108 @@ export default function AdminPage() {
 }
 
 // ============================================================
-// 待批核卡片（含主考預覽 + 改派功能）
+// 證書卡片
+// ============================================================
+function CertCard({ cert, onMarkReady, onMarkPicked, onPrint, loading }: any) {
+  const status = cert.printStatus;
+  const statusColor =
+    status === 'PENDING_PRINT' ? '#ff9800' :
+    status === 'READY' ? '#4caf50' :
+    status === 'PICKED_UP' ? '#666' : '#999';
+  const statusLabel =
+    status === 'PENDING_PRINT' ? '待製作' :
+    status === 'READY' ? '待領取' :
+    status === 'PICKED_UP' ? '已領取' : status;
+
+  return (
+    <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '14px', background: '#fafafa' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px', flexWrap: 'wrap' }}>
+            <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, background: statusColor, color: 'white' }}>
+              {statusLabel}
+            </span>
+            <code style={{ fontSize: '11px', color: '#666' }}>{cert.certificateId}</code>
+            {cert.certificateNumber && (
+              <code style={{ fontSize: '11px', background: '#003366', color: 'white', padding: '2px 6px', borderRadius: '3px' }}>
+                {cert.certificateNumber}
+              </code>
+            )}
+          </div>
+          <div style={{ fontSize: '15px', fontWeight: 600, color: '#003366' }}>
+            {cert.memberName}
+          </div>
+          <div style={{ fontSize: '13px', color: '#666', marginTop: '2px' }}>
+            🏕️ {cert.groupId} · 🎖️ <strong>{cert.badgeName}</strong>
+          </div>
+          {cert.readyAt && (
+            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>
+              製作完成：{new Date(cert.readyAt).toLocaleString('zh-HK')}
+            </div>
+          )}
+          {cert.pickedUpAt && (
+            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>
+              領取：{new Date(cert.pickedUpAt).toLocaleString('zh-HK')} by {cert.pickedUpBy || '-'}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => onPrint(cert.certificateId)}
+            disabled={loading}
+            style={{ padding: '8px 14px', background: '#003366', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
+          >
+            🖨️ 列印
+          </button>
+
+          {status === 'PENDING_PRINT' && (
+            <button
+              onClick={() => onMarkReady(cert.certificateId, cert.memberName)}
+              disabled={loading}
+              style={{ padding: '8px 14px', background: '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+            >
+              ✅ 標記已製作
+            </button>
+          )}
+
+          {status === 'READY' && (
+            <button
+              onClick={() => onMarkPicked(cert.certificateId, cert.memberName)}
+              disabled={loading}
+              style={{ padding: '8px 14px', background: '#ff5722', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+            >
+              📬 標記已領取
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterChip({ label, active, onClick, count, color = '#003366' }: any) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '6px 12px',
+        background: active ? color : 'white',
+        color: active ? 'white' : '#333',
+        border: `1px solid ${active ? color : '#ddd'}`,
+        borderRadius: '20px',
+        cursor: 'pointer',
+        fontSize: '13px',
+        fontWeight: active ? 600 : 400
+      }}
+    >
+      {label} {count !== undefined && <span style={{ opacity: 0.8 }}>({count})</span>}
+    </button>
+  );
+}
+
+// ============================================================
+// 待批核卡片
 // ============================================================
 function PendingCard({ app, onApprove, loading }: { app: any; onApprove: (id: string, overrideId?: string, name?: string) => void; loading: boolean }) {
   const [overrideMode, setOverrideMode] = useState(false);
@@ -609,18 +725,5 @@ function TabButton({ active, onClick, label }: { active: boolean; onClick: () =>
     >
       {label}
     </button>
-  );
-}
-
-function InfoCard({ title, items }: { title: string; items: string[] }) {
-  return (
-    <div style={{ background: '#f5f5f5', padding: '16px', borderRadius: '8px' }}>
-      <h4 style={{ margin: '0 0 8px', color: '#003366', fontSize: '14px' }}>{title}</h4>
-      <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#666' }}>
-        {items.map((item, idx) => (
-          <li key={idx} style={{ marginBottom: '4px' }}>{item}</li>
-        ))}
-      </ul>
-    </div>
   );
 }

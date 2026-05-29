@@ -1,12 +1,9 @@
 /**
- * API 呼叫封裝 (v3.7 - admin override examiner)
- * 讀取用 GET (穩定)，寫入用 POST (避開 CORS)
+ * API 呼叫封裝 (v3.8 - cert print + admin cert management)
  */
 
-// 👇 你的 Web App URL
 const API_BASE = 'https://script.google.com/macros/s/AKfycbyfZC3g9h19ybPbMSKxL6s1M5hBZLHOXH7BEJ3zXhqtM2jAqwZkQZJ8aT5mTwG0Qr8/exec';
 
-// 1. GET 請求：用於讀取資料
 async function callGet(action: string, params?: Record<string, string>) {
   const url = new URL(API_BASE);
   url.searchParams.set('action', action);
@@ -22,7 +19,6 @@ async function callGet(action: string, params?: Record<string, string>) {
   }
 }
 
-// 2. POST 請求：用於提交資料
 async function callPost(action: string, body: any) {
   try {
     const res = await fetch(API_BASE, {
@@ -38,7 +34,7 @@ async function callPost(action: string, body: any) {
 }
 
 export const api = {
-  // === 讀取操作 (GET) ===
+  // === GET ===
   getStatus: (appId: string, ymNumber: string) =>
     callGet('getStatus', { appId, ymNumber }),
 
@@ -54,18 +50,16 @@ export const api = {
   getGroups: () =>
     callGet('getGroups'),
 
-  // === 寫入操作 (POST) ===
+  // === POST 寫入 ===
   submitApplication: (data: any) =>
     callPost('submitApplication', data),
 
-  // 確認流程（Email 連結 → 前端頁 → 這幾個 API）
   parentConfirm: (token: string) =>
     callPost('parentConfirm', { token }),
 
   leaderConfirm: (token: string) =>
     callPost('leaderConfirm', { token }),
 
-  // 主考接受 / 拒絕 / 提交成績
   examinerAccept: (token: string) =>
     callPost('examinerAccept', { token }),
 
@@ -82,9 +76,15 @@ export const api = {
   adminGetDashboard: (staffToken: string) =>
     callPost('adminGetDashboard', { staffToken }),
 
-  // ⭐ 新增第 4 個參數 overrideExaminerId（人手指派主考）
   districtApprove: (staffToken: string, applicationId: string, approvedBy?: string, overrideExaminerId?: string) =>
     callPost('districtApprove', { staffToken, applicationId, approvedBy, overrideExaminerId }),
+
+  // ★ 證書管理（新版）
+  adminGetCertificates: (staffToken: string, status?: string) =>
+    callPost('adminGetCertificates', { staffToken, status }),
+
+  getCertificate: (certificateId: string, staffToken: string) =>
+    callPost('getCertificate', { certificateId, staffToken }),
 
   markCertificateReady: (staffToken: string, certificateId: string) =>
     callPost('markCertificateReady', { staffToken, certificateId }),
@@ -98,7 +98,6 @@ export const api = {
   reprintCertificate: (staffToken: string, applicationId: string) =>
     callPost('reprintCertificate', { staffToken, applicationId }),
 
-  // === 主考申請 ===
   submitExaminerApplication: (data: any) =>
     callPost('submitExaminerApplication', data)
 };
