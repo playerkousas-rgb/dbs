@@ -47,7 +47,7 @@ export function CertStandard({ data, showBg = true }: Props) {
     // 2. 英文姓名 (Top 42%)
     memberNameEn && {
       text: memberNameEn,
-      left: 50, top: 42,
+      left: 50, top: 40,
       width: 50,
       size: 3.5,
       weight: 400,
@@ -66,16 +66,16 @@ export function CertStandard({ data, showBg = true }: Props) {
     // 4. 專章中文 — 下移 2mm (Top 62%)
     badgeName && {
       text: badgeName,
-      left: 36, top: 62,
+      left: 40, top: 62,
       width: 26,
       size: 4.5,
       weight: 600,
       align: 'center',
     },
-    // 5. 專章英文 (Top 68%)
+    // 5. 專章英文 (Top 64%)
     badgeNameEn && {
       text: badgeNameEn,
-      left: 36, top: 68,
+      left: 36, top: 64,
       width: 26,
       size: 4.5,
       weight: 700,
@@ -91,28 +91,28 @@ export function CertStandard({ data, showBg = true }: Props) {
       weight: 600,
       align: 'center',
     },
-    // 7. 組別英文 (Left 58%, Top 68%)
+    // 7. 組別英文 (Left 58%, Top 64%)
     categoryEn && {
       text: categoryEn,
-      left: 58, top: 68,
+      left: 58, top: 64,
       width: 20,
       size: 4.5,
       weight: 700,
       align: 'center',
       font: 'Times New Roman, serif',
     },
-    // 8. 日期 — 加回編號上方 5mm (Top 78%)
+    // 8. 日期 — 加回編號上方 5mm (Top 80%)
     resultDateStr && {
       text: resultDateStr,
-      left: 12, top: 78,
+      left: 12, top: 80,
       size: 4,
       weight: 700,
       align: 'left',
     },
-    // 9. 證書編號 — 下移 (Top 83%)
+    // 9. 證書編號 — 下移 (Top 85%)
     certNo && {
       text: certNo,
-      left: 12, top: 83,
+      left: 12, top: 85,
       size: 3.5,
       align: 'left',
       font: 'monospace',
@@ -126,10 +126,10 @@ export function CertStandard({ data, showBg = true }: Props) {
       weight: 600,
       align: 'center',
     },
-    // 11. 簽發人職銜 — 下方 1-2mm (Top 90%)
+    // 11. 簽發人職銜 — 下方 1-2mm (Top 87%)
     {
       text: signerLine2,
-      left: 78, top: 90,
+      left: 78, top: 87,
       width: 22,
       size: 3,
       weight: 400,
