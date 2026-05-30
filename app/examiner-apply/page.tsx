@@ -17,6 +17,13 @@ interface GroupInfo {
   groupName: string;
 }
 
+// 每個被選專章的狀態：code + 申請級別 D/G
+interface SelectedBadge {
+  code: string;
+  fullTitle: string;
+  scope: 'D' | 'G';
+}
+
 export default function ExaminerApplyPage() {
   const [badges, setBadges] = useState<BadgeInfo[]>([]);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
@@ -33,12 +40,11 @@ export default function ExaminerApplyPage() {
     groupId: '',
     rank: '',
     yearsOfService: '',
-    selectedBadges: [] as string[],
+    selectedBadges: [] as SelectedBadge[],
     qualifications: '',
     remarks: ''
   });
 
-  // 證書附件（多個）
   const [certFiles, setCertFiles] = useState<File[]>([]);
 
   useEffect(() => {
@@ -57,12 +63,26 @@ export default function ExaminerApplyPage() {
   const [filterCategory, setFilterCategory] = useState('');
   const filteredBadges = filterCategory ? badges.filter(b => b.category === filterCategory) : badges;
 
-  const toggleBadge = (code: string) => {
+  const isSelected = (code: string) => form.selectedBadges.some(b => b.code === code);
+
+  // 勾選 / 取消勾選一個章（預設級別 G = 旅團主考）
+  const toggleBadge = (b: BadgeInfo) => {
+    setForm(prev => {
+      if (prev.selectedBadges.some(s => s.code === b.badgeCode)) {
+        return { ...prev, selectedBadges: prev.selectedBadges.filter(s => s.code !== b.badgeCode) };
+      }
+      return {
+        ...prev,
+        selectedBadges: [...prev.selectedBadges, { code: b.badgeCode, fullTitle: b.fullTitle, scope: 'G' }]
+      };
+    });
+  };
+
+  // 切換某章的 D / G
+  const setScope = (code: string, scope: 'D' | 'G') => {
     setForm(prev => ({
       ...prev,
-      selectedBadges: prev.selectedBadges.includes(code)
-        ? prev.selectedBadges.filter(b => b !== code)
-        : [...prev.selectedBadges, code]
+      selectedBadges: prev.selectedBadges.map(s => (s.code === code ? { ...s, scope } : s))
     }));
   };
 
@@ -94,23 +114,24 @@ export default function ExaminerApplyPage() {
     setError('');
 
     try {
-      // 轉換證書檔案為 base64
       const certFilesData = [];
       for (const file of certFiles) {
         const base64 = await fileToBase64(file);
         certFilesData.push({ name: file.name, size: file.size, data: base64 });
       }
 
-      const selectedBadgeNames = form.selectedBadges.map(code => {
-        const b = badges.find(x => x.badgeCode === code);
-        return b ? b.fullTitle + ' (' + code + ')' : code;
-      });
+      // 給人看的字串：「興趣 - 釣魚 (IAN) [區主考]」
+      const badgesLabel = form.selectedBadges
+        .map(s => `${s.fullTitle} (${s.code}) [${s.scope === 'D' ? '區主考' : '旅團主考'}]`)
+        .join(', ');
 
       const res = await api.submitExaminerApplication({
         name: form.name, email: form.email, phone: form.phone,
         groupId: form.groupId, rank: form.rank, yearsOfService: form.yearsOfService,
-        badges: selectedBadgeNames.join(', '),
-        badgeCodes: form.selectedBadges.join(','),
+        badges: badgesLabel,
+        badgeCodes: form.selectedBadges.map(s => s.code).join(','),
+        // ★ 機器讀：逐章 D/G
+        badgeScopes: form.selectedBadges.map(s => ({ code: s.code, fullTitle: s.fullTitle, scope: s.scope })),
         qualifications: form.qualifications, remarks: form.remarks,
         certFiles: certFilesData
       });
@@ -133,8 +154,8 @@ export default function ExaminerApplyPage() {
           <h4 style={{ margin: '0 0 8px', color: '#003366' }}>📋 接下來的流程</h4>
           <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#333' }}>
             <li>助理區總監（童軍）將審閱您的申請及資歷證書</li>
-            <li>ADC 可能只批准部分專章（視乎資歷匹配）</li>
-            <li>審批通過的專章將自動加入主考名冊</li>
+            <li>ADC 會逐章批准或否決（以您申請的級別 D/G 為準）</li>
+            <li>批准的專章將自動加入主考名冊</li>
             <li>您會收到電郵通知批准結果</li>
           </ol>
         </div>
@@ -158,7 +179,7 @@ export default function ExaminerApplyPage() {
       <h2 style={{ color: '#003366', marginTop: 0 }}>👨‍🏫 專科徽章主考申請</h2>
       <p style={{ color: '#666', fontSize: '14px', marginBottom: '24px' }}>
         歡迎筲箕灣區領袖申請成為專科徽章主考。填寫以下資料後，助理區總監（童軍）將審閱您的申請。
-        <br/>ADC 可能根據您的資歷只批准部分專章，批准後將自動加入主考名冊。
+        <br />ADC 會根據您的資歷逐章批准，批准後將自動加入主考名冊。
       </p>
 
       {error && (
@@ -196,9 +217,14 @@ export default function ExaminerApplyPage() {
         </Section>
 
         {/* ===== 申請專章 ===== */}
-        <Section title="申請主考的專章（可多選）">
+        <Section title="申請主考的專章（可多選，並選擇級別）">
           <div style={{ background: '#fff3e0', padding: '12px', borderRadius: '8px', marginBottom: '12px', fontSize: '13px' }}>
-            <strong>💡 提示：</strong>您可以申請多個專章，ADC 會根據您的資歷逐項審批。不符合的專章會被剔除，符合的自動加入主考名冊。
+            <strong>💡 提示：</strong>每個專章可選擇申請成為
+            <strong style={{ color: '#1565c0' }}> 區主考(D)</strong> 或
+            <strong style={{ color: '#e65100' }}> 旅團主考(G)</strong>。
+            <br />• <strong>旅團主考(G)</strong>：只考核本旅團的童軍成員。
+            <br />• <strong>區主考(D)</strong>：可考核全區童軍成員。
+            <br />ADC 會根據您的資歷逐項審批，不符合的會被剔除。
           </div>
 
           <div style={{ marginBottom: '12px' }}>
@@ -209,18 +235,31 @@ export default function ExaminerApplyPage() {
             </div>
           </div>
 
+          {/* 已選清單 + 逐章 D/G */}
           {form.selectedBadges.length > 0 && (
             <div style={{ background: '#e8f5e9', padding: '12px', borderRadius: '8px', marginBottom: '12px' }}>
-              <strong style={{ fontSize: '14px' }}>已選 {form.selectedBadges.length} 個專章：</strong>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
-                {form.selectedBadges.map(code => {
-                  const b = badges.find(x => x.badgeCode === code);
+              <strong style={{ fontSize: '14px' }}>已選 {form.selectedBadges.length} 個專章（請逐章選擇級別）：</strong>
+              <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {form.selectedBadges.map(s => {
+                  const b = badges.find(x => x.badgeCode === s.code);
                   return (
-                    <span key={code} onClick={() => toggleBadge(code)} style={{
-                      display: 'inline-flex', alignItems: 'center', gap: '4px',
-                      padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600,
-                      background: '#2e7d32', color: 'white', cursor: 'pointer'
-                    }}>{b ? b.badgeName : code} ✕</span>
+                    <div key={s.code} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: '8px', background: 'white', padding: '6px 10px', borderRadius: '6px', flexWrap: 'wrap'
+                    }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600, flex: 1, minWidth: '140px' }}>
+                        {b ? (b.fullTitle || b.badgeName) : s.code}
+                        <span style={{ color: '#999', fontWeight: 400, marginLeft: '6px' }}>({s.code})</span>
+                      </span>
+                      <div style={{ display: 'inline-flex', borderRadius: '6px', overflow: 'hidden', border: '1px solid #ccc' }}>
+                        <ScopeBtn active={s.scope === 'G'} onClick={() => setScope(s.code, 'G')} label="旅團主考 G" color="#e65100" />
+                        <ScopeBtn active={s.scope === 'D'} onClick={() => setScope(s.code, 'D')} label="區主考 D" color="#1565c0" />
+                      </div>
+                      <button type="button" onClick={() => b && toggleBadge(b)} style={{
+                        background: '#ffebee', color: '#c62828', border: 'none', borderRadius: '4px',
+                        padding: '4px 10px', cursor: 'pointer', fontSize: '12px'
+                      }}>移除</button>
+                    </div>
                   );
                 })}
               </div>
@@ -229,15 +268,15 @@ export default function ExaminerApplyPage() {
 
           <div style={{ maxHeight: '360px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px', padding: '4px' }}>
             {filteredBadges.map(b => {
-              const isSelected = form.selectedBadges.includes(b.badgeCode);
+              const sel = isSelected(b.badgeCode);
               return (
                 <label key={b.badgeCode} style={{
                   display: 'flex', alignItems: 'center', padding: '8px 12px', cursor: 'pointer',
-                  borderBottom: '1px solid #f5f5f5', background: isSelected ? '#e8f5e9' : 'transparent'
+                  borderBottom: '1px solid #f5f5f5', background: sel ? '#e8f5e9' : 'transparent'
                 }}>
-                  <input type="checkbox" checked={isSelected} onChange={() => toggleBadge(b.badgeCode)} style={{ marginRight: '10px', width: '18px', height: '18px' }} />
+                  <input type="checkbox" checked={sel} onChange={() => toggleBadge(b)} style={{ marginRight: '10px', width: '18px', height: '18px' }} />
                   <span style={{ flex: 1 }}>
-                    <span style={{ fontWeight: isSelected ? 700 : 400 }}>{b.fullTitle || b.badgeName}</span>
+                    <span style={{ fontWeight: sel ? 700 : 400 }}>{b.fullTitle || b.badgeName}</span>
                     <span style={{ color: '#999', fontSize: '12px', marginLeft: '6px' }}>({b.badgeCode})</span>
                   </span>
                   <span style={{
@@ -262,7 +301,7 @@ export default function ExaminerApplyPage() {
         <Section title="資歷證書附件">
           <div style={{ background: '#e3f2fd', padding: '12px', borderRadius: '8px', marginBottom: '12px', fontSize: '13px' }}>
             <strong>📎 請上傳相關資歷證書：</strong>例如急救證書、訓練班結業證書、專業資格證明等。
-            <br/>支援 JPG / PNG / PDF，每個檔案上限 5MB，最多 5 個。
+            <br />支援 JPG / PNG / PDF，每個檔案上限 5MB，最多 5 個。
           </div>
 
           <input
@@ -279,18 +318,14 @@ export default function ExaminerApplyPage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '8px 12px', background: '#f5f5f5', borderRadius: '6px', marginBottom: '4px', fontSize: '13px'
                 }}>
-                  <span>
-                    📄 {file.name} <span style={{ color: '#999' }}>({(file.size / 1024).toFixed(1)} KB)</span>
-                  </span>
+                  <span>📄 {file.name} <span style={{ color: '#999' }}>({(file.size / 1024).toFixed(1)} KB)</span></span>
                   <button type="button" onClick={() => removeCertFile(idx)} style={{
                     background: '#ffebee', color: '#c62828', border: 'none', borderRadius: '4px',
                     padding: '2px 10px', cursor: 'pointer', fontSize: '12px'
                   }}>移除</button>
                 </div>
               ))}
-              <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                已上傳 {certFiles.length}/5 個檔案
-              </p>
+              <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>已上傳 {certFiles.length}/5 個檔案</p>
             </div>
           )}
 
@@ -307,7 +342,7 @@ export default function ExaminerApplyPage() {
         </Section>
 
         <div style={{ background: '#e3f2fd', padding: '16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
-          <strong>📋 審批流程：</strong><br/>
+          <strong>📋 審批流程：</strong><br />
           提交申請 → ADC 審閱資歷 → <strong>逐項批准/剔除專章</strong> → 批准的自動加入主考名冊 → 開始接受考核指派
         </div>
 
@@ -340,5 +375,11 @@ function FilterBtn({ active, onClick, label }: { active: boolean; onClick: () =>
   return (<button type="button" onClick={onClick} style={{
     padding: '4px 14px', borderRadius: '16px', border: 'none', fontSize: '13px', fontWeight: 600,
     background: active ? '#003366' : '#e0e0e0', color: active ? 'white' : '#333', cursor: 'pointer'
+  }}>{label}</button>);
+}
+function ScopeBtn({ active, onClick, label, color }: { active: boolean; onClick: () => void; label: string; color: string }) {
+  return (<button type="button" onClick={onClick} style={{
+    padding: '4px 10px', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+    background: active ? color : '#f0f0f0', color: active ? 'white' : '#666'
   }}>{label}</button>);
 }
