@@ -1,10 +1,7 @@
 /**
- * API 呼叫封裝 (v3.10 - 修復 CertificateQueue / CertificatePrintList 同步)
+ * API 呼叫封裝 (v3.12 - 加入 ADC 主考委任審批)
  *
- * 修復內容：
- * 1. recordPrintAction() — 接受完整 certData，傳給後端更新 CertificateQueue
- * 2. syncCertificatePrintList() — 接受完整 certData，傳給後端寫入 CertificatePrintList
- * 3. 確保 print-cert/[id] 和 examiner 頁面傳遞的資料能到達後端
+ * 本檔為「完整檔」，直接整個覆蓋 repo 的 lib/api.ts 即可。
  */
 
 const API_BASE = 'https://script.google.com/macros/s/AKfycbyfZC3g9h19ybPbMSKxL6s1M5hBZLHOXH7BEJ3zXhqtM2jAqwZkQZJ8aT5mTwG0Qr8/exec';
@@ -106,14 +103,7 @@ export const api = {
   submitExaminerApplication: (data: any) =>
     callPost('submitExaminerApplication', data),
 
-  // ★★★ v3.10 修復：列印記錄同步（可接收完整證書資料）★★★
-  /**
-   * 記錄列印動作 → 更新 CertificateQueue
-   * @param staffToken - 管理密鑰
-   * @param certificateId - 證書 ID
-   * @param certData - (可選) 完整證書資料 { memberName, badgeName, groupId, applicationId, certificateNumber, resultDate, ... }
-   *                   後端收到後寫入 CertificateQueue 對應欄位
-   */
+  // ★★★ v3.10 列印記錄同步 ★★★
   recordPrintAction: (staffToken: string, certificateId: string, certData?: any) =>
     callPost('recordPrintAction', {
       staffToken,
@@ -121,20 +111,35 @@ export const api = {
       certData: certData || {}
     }),
 
-  /**
-   * 同步 CertificatePrintList（確保列印清單有完整資料）
-   * @param staffToken - 管理密鑰（可傳空字串，由後端判斷權限）
-   * @param applicationId - 申請編號
-   * @param certData - (可選) 完整證書資料 { memberName, memberNameEn, groupId, groupNameCn,
-   *                   badgeName, badgeNameEn, badgeCode, category, certificateNumber, resultDate }
-   *                   後端收到後寫入 CertificatePrintList
-   */
   syncCertificatePrintList: (staffToken: string, applicationId: string, certData?: any) =>
     callPost('syncCertificatePrintList', {
       staffToken,
       applicationId,
       certData: certData || {}
     }),
+
+  // ★★★ v3.12 新增：ADC 主考委任審批 ★★★
+
+  /** ADC 驗證密鑰 */
+  adcVerify: (adcToken: string) =>
+    callPost('adcVerify', { adcToken }),
+
+  /** ADC 讀取待審批的主考申請清單 */
+  adcGetPending: (adcToken: string) =>
+    callPost('adcGetPending', { adcToken }),
+
+  /**
+   * ADC 審批主考申請（逐章批准 / 否決）
+   * approvedBadges：已批准的章 [{ fullTitle, code, scope:'D'|'G' }]
+   * 未放進此陣列的章 = 否決
+   */
+  adcApprove: (
+    adcToken: string,
+    appointmentId: string,
+    approvedBadges: Array<{ fullTitle: string; code?: string; scope: 'D' | 'G' }>,
+    approvedBy?: string
+  ) =>
+    callPost('adcApprove', { adcToken, appointmentId, approvedBadges, approvedBy }),
 };
 
 export { API_BASE };
