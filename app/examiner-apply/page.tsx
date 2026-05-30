@@ -17,10 +17,10 @@ interface GroupInfo {
   groupName: string;
 }
 
-// 每個被選專章的狀態：code + 申請級別 D/G
+// 每個被選專章的狀態：用 fullTitle 當唯一識別（因為語言/手藝/通訊會共用 badge_code）
 interface SelectedBadge {
-  code: string;
   fullTitle: string;
+  code: string;
   scope: 'D' | 'G';
 }
 
@@ -63,26 +63,27 @@ export default function ExaminerApplyPage() {
   const [filterCategory, setFilterCategory] = useState('');
   const filteredBadges = filterCategory ? badges.filter(b => b.category === filterCategory) : badges;
 
-  const isSelected = (code: string) => form.selectedBadges.some(b => b.code === code);
+  // 用 fullTitle 判斷是否已選（唯一）
+  const isSelected = (fullTitle: string) => form.selectedBadges.some(b => b.fullTitle === fullTitle);
 
   // 勾選 / 取消勾選一個章（預設級別 G = 旅團主考）
   const toggleBadge = (b: BadgeInfo) => {
     setForm(prev => {
-      if (prev.selectedBadges.some(s => s.code === b.badgeCode)) {
-        return { ...prev, selectedBadges: prev.selectedBadges.filter(s => s.code !== b.badgeCode) };
+      if (prev.selectedBadges.some(s => s.fullTitle === b.fullTitle)) {
+        return { ...prev, selectedBadges: prev.selectedBadges.filter(s => s.fullTitle !== b.fullTitle) };
       }
       return {
         ...prev,
-        selectedBadges: [...prev.selectedBadges, { code: b.badgeCode, fullTitle: b.fullTitle, scope: 'G' }]
+        selectedBadges: [...prev.selectedBadges, { fullTitle: b.fullTitle, code: b.badgeCode, scope: 'G' }]
       };
     });
   };
 
-  // 切換某章的 D / G
-  const setScope = (code: string, scope: 'D' | 'G') => {
+  // 切換某章的 D / G（用 fullTitle 定位）
+  const setScope = (fullTitle: string, scope: 'D' | 'G') => {
     setForm(prev => ({
       ...prev,
-      selectedBadges: prev.selectedBadges.map(s => (s.code === code ? { ...s, scope } : s))
+      selectedBadges: prev.selectedBadges.map(s => (s.fullTitle === fullTitle ? { ...s, scope } : s))
     }));
   };
 
@@ -120,7 +121,7 @@ export default function ExaminerApplyPage() {
         certFilesData.push({ name: file.name, size: file.size, data: base64 });
       }
 
-      // 給人看的字串：「興趣 - 釣魚 (IAN) [區主考]」
+      // 給人看的字串：「服務 - 語言 (英語) (SIN) [區主考]」
       const badgesLabel = form.selectedBadges
         .map(s => `${s.fullTitle} (${s.code}) [${s.scope === 'D' ? '區主考' : '旅團主考'}]`)
         .join(', ');
@@ -130,7 +131,7 @@ export default function ExaminerApplyPage() {
         groupId: form.groupId, rank: form.rank, yearsOfService: form.yearsOfService,
         badges: badgesLabel,
         badgeCodes: form.selectedBadges.map(s => s.code).join(','),
-        // ★ 機器讀：逐章 D/G
+        // ★ 機器讀：逐章 D/G（用 fullTitle 唯一識別）
         badgeScopes: form.selectedBadges.map(s => ({ code: s.code, fullTitle: s.fullTitle, scope: s.scope })),
         qualifications: form.qualifications, remarks: form.remarks,
         certFiles: certFilesData
@@ -240,37 +241,34 @@ export default function ExaminerApplyPage() {
             <div style={{ background: '#e8f5e9', padding: '12px', borderRadius: '8px', marginBottom: '12px' }}>
               <strong style={{ fontSize: '14px' }}>已選 {form.selectedBadges.length} 個專章（請逐章選擇級別）：</strong>
               <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {form.selectedBadges.map(s => {
-                  const b = badges.find(x => x.badgeCode === s.code);
-                  return (
-                    <div key={s.code} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      gap: '8px', background: 'white', padding: '6px 10px', borderRadius: '6px', flexWrap: 'wrap'
-                    }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, flex: 1, minWidth: '140px' }}>
-                        {b ? (b.fullTitle || b.badgeName) : s.code}
-                        <span style={{ color: '#999', fontWeight: 400, marginLeft: '6px' }}>({s.code})</span>
-                      </span>
-                      <div style={{ display: 'inline-flex', borderRadius: '6px', overflow: 'hidden', border: '1px solid #ccc' }}>
-                        <ScopeBtn active={s.scope === 'G'} onClick={() => setScope(s.code, 'G')} label="旅團主考 G" color="#e65100" />
-                        <ScopeBtn active={s.scope === 'D'} onClick={() => setScope(s.code, 'D')} label="區主考 D" color="#1565c0" />
-                      </div>
-                      <button type="button" onClick={() => b && toggleBadge(b)} style={{
-                        background: '#ffebee', color: '#c62828', border: 'none', borderRadius: '4px',
-                        padding: '4px 10px', cursor: 'pointer', fontSize: '12px'
-                      }}>移除</button>
+                {form.selectedBadges.map(s => (
+                  <div key={s.fullTitle} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: '8px', background: 'white', padding: '6px 10px', borderRadius: '6px', flexWrap: 'wrap'
+                  }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, flex: 1, minWidth: '140px' }}>
+                      {s.fullTitle}
+                      <span style={{ color: '#999', fontWeight: 400, marginLeft: '6px' }}>({s.code})</span>
+                    </span>
+                    <div style={{ display: 'inline-flex', borderRadius: '6px', overflow: 'hidden', border: '1px solid #ccc' }}>
+                      <ScopeBtn active={s.scope === 'G'} onClick={() => setScope(s.fullTitle, 'G')} label="旅團主考 G" color="#e65100" />
+                      <ScopeBtn active={s.scope === 'D'} onClick={() => setScope(s.fullTitle, 'D')} label="區主考 D" color="#1565c0" />
                     </div>
-                  );
-                })}
+                    <button type="button" onClick={() => toggleBadge({ fullTitle: s.fullTitle, badgeCode: s.code, badgeName: s.fullTitle, badgeNameEn: '', category: '' })} style={{
+                      background: '#ffebee', color: '#c62828', border: 'none', borderRadius: '4px',
+                      padding: '4px 10px', cursor: 'pointer', fontSize: '12px'
+                    }}>移除</button>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
           <div style={{ maxHeight: '360px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px', padding: '4px' }}>
             {filteredBadges.map(b => {
-              const sel = isSelected(b.badgeCode);
+              const sel = isSelected(b.fullTitle);
               return (
-                <label key={b.badgeCode} style={{
+                <label key={b.fullTitle} style={{
                   display: 'flex', alignItems: 'center', padding: '8px 12px', cursor: 'pointer',
                   borderBottom: '1px solid #f5f5f5', background: sel ? '#e8f5e9' : 'transparent'
                 }}>
