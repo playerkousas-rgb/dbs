@@ -1,5 +1,5 @@
 /**
- * API 呼叫封裝 (v3.12 - 加入 ADC 主考委任審批)
+ * API 呼叫封裝 (v3.13 - 加入 ADC 審批 + 主考申請進度查詢)
  *
  * 本檔為「完整檔」，直接整個覆蓋 repo 的 lib/api.ts 即可。
  */
@@ -118,7 +118,7 @@ export const api = {
       certData: certData || {}
     }),
 
-  // ★★★ v3.12 新增：ADC 主考委任審批 ★★★
+  // ★★★ v3.12 ADC 主考委任審批 ★★★
 
   /** ADC 驗證密鑰 */
   adcVerify: (adcToken: string) =>
@@ -131,7 +131,6 @@ export const api = {
   /**
    * ADC 審批主考申請（逐章批准 / 否決）
    * approvedBadges：已批准的章 [{ fullTitle, code, scope:'D'|'G' }]
-   * 未放進此陣列的章 = 否決
    */
   adcApprove: (
     adcToken: string,
@@ -140,6 +139,10 @@ export const api = {
     approvedBy?: string
   ) =>
     callPost('adcApprove', { adcToken, appointmentId, approvedBadges, approvedBy }),
+
+  // ★★★ v3.13 主考申請進度查詢（公開，用申請編號） ★★★
+  getExaminerAppointmentStatus: (appointmentId: string) =>
+    callPost('getExaminerAppointmentStatus', { appointmentId }),
 };
 
 export { API_BASE };
