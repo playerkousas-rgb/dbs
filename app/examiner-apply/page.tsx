@@ -35,6 +35,7 @@ export default function ExaminerApplyPage() {
 
   const [form, setForm] = useState({
     name: '',
+    title: '先生',
     email: '',
     phone: '',
     groupId: '',
@@ -126,8 +127,13 @@ export default function ExaminerApplyPage() {
         .map(s => `${s.fullTitle} (${s.code}) [${s.scope === 'D' ? '區主考' : '旅團主考'}]`)
         .join(', ');
 
+      // 姓名 + 稱謂組合（稱謂選「不適用」則不加），統一格式避免重複行
+      const fullName = (form.title && form.title !== '不適用')
+        ? `${form.name.trim()}${form.title}`
+        : form.name.trim();
+
       const res = await api.submitExaminerApplication({
-        name: form.name, email: form.email, phone: form.phone,
+        name: fullName, email: form.email, phone: form.phone,
         groupId: form.groupId, rank: form.rank, yearsOfService: form.yearsOfService,
         badges: badgesLabel,
         badgeCodes: form.selectedBadges.map(s => s.code).join(','),
@@ -191,7 +197,18 @@ export default function ExaminerApplyPage() {
         {/* ===== 個人資料 ===== */}
         <Section title="個人資料">
           <Row>
-            <Input label="姓名" value={form.name} onChange={v => setForm(p => ({ ...p, name: v }))} required placeholder="例如：陳大文先生" />
+            {/* 姓名（不含稱謂）+ 稱謂下拉，送出時自動組合，統一姓名格式 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: '8px' }}>
+              <Input label="姓名（不含稱謂）" value={form.name} onChange={v => setForm(p => ({ ...p, name: v }))} required placeholder="例如：陳大文" />
+              <div>
+                <label style={labelStyle}>稱謂 <span style={{ color: '#c62828' }}>*</span></label>
+                <select value={form.title} required onChange={e => setForm(p => ({ ...p, title: e.target.value }))} style={selectStyle}>
+                  <option value="先生">先生</option>
+                  <option value="女士">女士</option>
+                  <option value="不適用">不適用</option>
+                </select>
+              </div>
+            </div>
             <Input label="電郵" value={form.email} onChange={v => setForm(p => ({ ...p, email: v }))} required type="email" placeholder="接收審批結果及考核通知" />
           </Row>
           <Row>
