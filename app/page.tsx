@@ -11,6 +11,12 @@ export default function HomePage() {
           整合報考、審批、主考派發、成績回報、證書領取於一體。<br/>
           考生、主考、專章秘書各取所需，流程自動推進。
         </p>
+        <Link href="/guide">
+          <button style={{
+            padding: '10px 28px', borderRadius: '8px', border: '1px solid #003366',
+            background: 'white', color: '#003366', fontWeight: 600, cursor: 'pointer'
+          }}>📖 使用指南</button>
+        </Link>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
@@ -44,6 +50,12 @@ export default function HomePage() {
           desc="查詢主考申請審批進度；助理區總監（ADC）登入審批主考委任。"
           href="/adc"
           btn="進度查詢 / ADC 審批"
+        />
+        <Card 
+          title="📖 使用指南" 
+          desc="考生 / 家長、主考的操作說明與權責一覽。"
+          href="/guide"
+          btn="查看指南"
         />
         <Card 
           title="⚙️ 秘書後台" 
