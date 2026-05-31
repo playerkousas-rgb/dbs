@@ -40,6 +40,12 @@ export default function HomePage() {
           btn="申請主考"
         />
         <Card 
+          title="🗂️ 主考專區" 
+          desc="查詢主考申請審批進度；助理區總監（ADC）登入審批主考委任。"
+          href="/adc"
+          btn="進度查詢 / ADC 審批"
+        />
+        <Card 
           title="⚙️ 秘書後台" 
           desc="審批申請、指派主考、管理證書隊列、查看統計報表。"
           href="/admin"
