@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 export default function AdminPage() {
   const [token, setToken] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'certificates' | 'printList' | 'examiners' | 'badges'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'certificates' | 'printList' | 'examiners' | 'badges' | 'help'>('dashboard');
   const [pendingApps, setPendingApps] = useState<any[]>([]);
   const [dashboard, setDashboard] = useState<Record<string, number> | null>(null);
   const [printList, setPrintList] = useState<any[]>([]);
@@ -234,6 +234,7 @@ export default function AdminPage() {
         <TabButton active={activeTab === 'printList'} onClick={() => { setActiveTab('printList'); loadPrintList(); }} label="📋 列印清單" />
         <TabButton active={activeTab === 'examiners'} onClick={() => { setActiveTab('examiners'); loadExaminers(); }} label="主考名單" />
         <TabButton active={activeTab === 'badges'} onClick={() => { setActiveTab('badges'); loadBadges(); }} label="專章代碼" />
+        <TabButton active={activeTab === 'help'} onClick={() => setActiveTab('help')} label="📖 說明" />
       </div>
 
       {activeTab === 'pending' && (
@@ -422,6 +423,8 @@ export default function AdminPage() {
         </div>
       )}
 
+      {activeTab === 'help' && <DbsHelp />}
+
       {activeTab === 'dashboard' && (
         <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
           <h3 style={{ color: '#003366', marginTop: 0 }}>📈 系統概覽</h3>
@@ -431,6 +434,98 @@ export default function AdminPage() {
     </div>
   );
 }
+
+// ============================================================
+// DBS 後台說明（DBS 指南 + 維護 + 程式說明）
+// ============================================================
+function DbsHelp() {
+  const [doc, setDoc] = useState<'dbs' | 'maintain' | 'script'>('dbs');
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <HBtn active={doc === 'dbs'} onClick={() => setDoc('dbs')} label="🗂️ DBS 操作指南" />
+        <HBtn active={doc === 'maintain'} onClick={() => setDoc('maintain')} label="🛠️ 後台維護說明" />
+        <HBtn active={doc === 'script'} onClick={() => setDoc('script')} label="💻 程式說明" />
+      </div>
+      {doc === 'dbs' && (
+        <HCard>
+          <HH>🗂️ DBS（專章秘書）操作指南</HH>
+          <HSub>你可以做什麼</HSub>
+          <HUl items={[
+            '報考審批、指派主考、證書管理、報表：本「秘書後台」各分頁。',
+            '主考名單管理、新增專章、同步：Google 試算表「🏕️ 主考管理」選單。',
+          ]} />
+          <HSub>日常重點</HSub>
+          <HOl items={[
+            '報考審批/派主考/證書：在本後台操作（沿用原流程）。',
+            '主考委任：ADC 在 /adc 審批後系統已自動寫入並同步，你只會收到通知信，通常不用手動同步。',
+            '新增專科徽章：見「後台維護說明」的新增專章步驟。',
+            '取消主考資格：到試算表 ExaminerMatrix 把該主考該章的格清空，再按選單「🔄 同步主考資料」。',
+          ]} />
+          <HSub>你的責任</HSub>
+          <HUl items={['維護 BadgeCodes（章的增減）。', '處理取消主考、異常名單。', '保管秘書密鑰。']} />
+        </HCard>
+      )}
+      {doc === 'maintain' && (
+        <HCard>
+          <HH>🛠️ 後台維護說明</HH>
+          <HSub>核心原則</HSub>
+          <HUl items={[
+            'BadgeCodes 是唯一真理。',
+            'full_title 是章識別鑰匙（唯一）；badge_code 可重複（同章細分共用，用於證書編號，屬正確設計）。',
+            'full_title 只在 BadgeCodes 填一次，其餘程式複製 → 全形/半形不會出錯。',
+            '報考只讀 Examiners；Matrix 是人看視圖。',
+          ]} />
+          <HSub>新增專章 SOP</HSub>
+          <HOl items={[
+            'BadgeCodes 最下加一列（active=TRUE）；一般章 full_title 可留空，細分章自填唯一 full_title。',
+            '選單「✍️ 自動補 full_title」。',
+            '選單「🔧 重建 Matrix 表頭」。',
+          ]} />
+          <HSub>其他</HSub>
+          <HUl items={[
+            '停用章：BadgeCodes 該列 active=FALSE。',
+            '取消主考某章：Matrix 清空該格 → 同步。',
+            '重複行：確保姓名一致(含稱謂)、單位用「港島第XX旅」，再同步。',
+          ]} />
+          <HNote>同步＝清空 Examiners 後依 Matrix 重建；ADC 審批會自動補欄+自動同步。完整版見 repo docs/。</HNote>
+        </HCard>
+      )}
+      {doc === 'script' && (
+        <HCard>
+          <HH>💻 程式說明（Apps Script）</HH>
+          <HSub>主要路由</HSub>
+          <HUl items={[
+            'submitExaminerApplication / adcGetPending / adcApprove / getExaminerAppointmentStatus / adcVerify',
+          ]} />
+          <HSub>選單工具</HSub>
+          <HUl items={[
+            'autoComposeFullTitles、rebuildMatrixHeaderFromBadgeCodes、syncExaminerMatrixDirect',
+          ]} />
+          <HSub>關鍵函式</HSub>
+          <HUl items={[
+            'normalizeUnit_（group_id→港島第XX旅）、writeBadgesToMatrix_（缺欄自動補）、validateBadgeCodes_',
+          ]} />
+          <HSub>修改注意</HSub>
+          <HUl items={[
+            '章比對一律用 full_title；Examiners 章名存 full_title、unit 存「港島第XX旅」。',
+            '主考姓名三表須一致(含稱謂)。Apps Script 改完務必重新部署。',
+          ]} />
+          <HNote>完整版見 repo docs/ 內三份 MD。</HNote>
+        </HCard>
+      )}
+    </div>
+  );
+}
+function HBtn({ active, onClick, label }: any) {
+  return (<button onClick={onClick} style={{ padding: '8px 14px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', background: active ? '#1565c0' : '#e0e0e0', color: active ? 'white' : '#333' }}>{label}</button>);
+}
+function HCard({ children }: any) { return <div style={{ background: 'white', padding: '24px', borderRadius: '12px', lineHeight: 1.7 }}>{children}</div>; }
+function HH({ children }: any) { return <h3 style={{ color: '#003366', marginTop: 0 }}>{children}</h3>; }
+function HSub({ children }: any) { return <h4 style={{ color: '#1565c0', margin: '18px 0 8px', fontSize: '15px' }}>{children}</h4>; }
+function HUl({ items }: any) { return <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#333' }}>{items.map((t: string, i: number) => <li key={i} style={{ marginBottom: '4px' }}>{t}</li>)}</ul>; }
+function HOl({ items }: any) { return <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#333' }}>{items.map((t: string, i: number) => <li key={i} style={{ marginBottom: '4px' }}>{t}</li>)}</ol>; }
+function HNote({ children }: any) { return <p style={{ marginTop: '14px', fontSize: '12px', color: '#999', background: '#f9f9f9', padding: '10px', borderRadius: '8px' }}>{children}</p>; }
 
 // ============================================================
 // 證書卡片
