@@ -19,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <a href="/certificates" style={{ color: '#bbdefb', textDecoration: 'none' }}>📋 證書</a>
             <a href="/examiner-apply" style={{ color: '#bbdefb', textDecoration: 'none' }}>👨‍🏫 主考申請</a>
             <a href="/adc" style={{ color: '#bbdefb', textDecoration: 'none' }}>🗂️ 主考專區</a>
+            <a href="/guide" style={{ color: '#bbdefb', textDecoration: 'none' }}>📖 指南</a>
             <a href="/admin" style={{ color: '#bbdefb', textDecoration: 'none' }}>⚙️ 後台</a>
           </nav>
         </header>
