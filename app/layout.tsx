@@ -13,11 +13,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <h1 style={{ margin: 0, fontSize: '18px' }}>
             <a href="/" style={{ color: 'white', textDecoration: 'none' }}>🏕️ 筲箕灣區專科徽章管理系統</a>
           </h1>
-          <nav style={{ display: 'flex', gap: '12px', fontSize: '14px' }}>
+          <nav style={{ display: 'flex', gap: '12px', fontSize: '14px', flexWrap: 'wrap' }}>
             <a href="/apply" style={{ color: '#bbdefb', textDecoration: 'none' }}>📝 報考</a>
             <a href="/status" style={{ color: '#bbdefb', textDecoration: 'none' }}>🔍 查詢</a>
             <a href="/certificates" style={{ color: '#bbdefb', textDecoration: 'none' }}>📋 證書</a>
             <a href="/examiner-apply" style={{ color: '#bbdefb', textDecoration: 'none' }}>👨‍🏫 主考申請</a>
+            <a href="/adc" style={{ color: '#bbdefb', textDecoration: 'none' }}>🗂️ 主考專區</a>
             <a href="/admin" style={{ color: '#bbdefb', textDecoration: 'none' }}>⚙️ 後台</a>
           </nav>
         </header>
