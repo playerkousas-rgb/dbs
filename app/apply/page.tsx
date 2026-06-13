@@ -78,6 +78,72 @@ export default function ApplyPage() {
     certIssuer: '',
     remarks: ''
   });
+  const [rememberProfile, setRememberProfile] = useState(true);
+
+  // === 瀏覽器自動記住成員資料 ===
+  const PROFILE_STORAGE_KEY = 'dbs_apply_profile_v1';
+  const PROFILE_OPT_OUT_KEY = 'dbs_apply_profile_optout';
+
+  // 載入已儲存的個人資料
+  useEffect(() => {
+    try {
+      const optOut = localStorage.getItem(PROFILE_OPT_OUT_KEY);
+      if (optOut === '1') {
+        setRememberProfile(false);
+        return;
+      }
+      const saved = localStorage.getItem(PROFILE_STORAGE_KEY);
+      if (saved) {
+        const profile = JSON.parse(saved);
+        setForm(prev => ({ ...prev, ...profile }));
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 自動儲存個人資料
+  useEffect(() => {
+    if (!rememberProfile) {
+      localStorage.removeItem(PROFILE_STORAGE_KEY);
+      localStorage.setItem(PROFILE_OPT_OUT_KEY, '1');
+      return;
+    }
+    localStorage.removeItem(PROFILE_OPT_OUT_KEY);
+    try {
+      const profile = {
+        memberName: form.memberName,
+        memberNameEn: form.memberNameEn,
+        groupId: form.groupId,
+        phone: form.phone,
+        email: form.email,
+        parentName: form.parentName,
+        parentEmail: form.parentEmail,
+        ymNumber: form.ymNumber,
+      };
+      // 只有當有填寫內容時才存
+      if (Object.values(profile).some(v => v)) {
+        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+      }
+    } catch {}
+  }, [form.memberName, form.memberNameEn, form.groupId, form.phone, form.email, form.parentName, form.parentEmail, form.ymNumber, rememberProfile]);
+
+  const clearSavedProfile = () => {
+    localStorage.removeItem(PROFILE_STORAGE_KEY);
+    localStorage.removeItem(PROFILE_OPT_OUT_KEY);
+    setForm(prev => ({
+      ...prev,
+      memberName: '',
+      memberNameEn: '',
+      groupId: '',
+      phone: '',
+      email: '',
+      parentName: '',
+      parentEmail: '',
+      ymNumber: '',
+    }));
+    setRememberProfile(true);
+    alert('已清除此瀏覽器儲存的個人資料');
+  };
 
   useEffect(() => {
     setDataLoading(true);
@@ -257,8 +323,8 @@ const selectedBadge = badges.find(b => b.fullTitle === form.badgeName);
         {/* ===== 成員資料 ===== */}
         <Section title="成員資料">
           <Row>
-            <Input label="中文姓名" value={form.memberName} onChange={(v: string) => updateForm('memberName', v)} required />
-            <Input label="英文姓名" value={form.memberNameEn} onChange={(v: string) => updateForm('memberNameEn', v)} />
+            <Input label="中文姓名" value={form.memberName} onChange={(v: string) => updateForm('memberName', v)} required autoComplete="name" name="memberName" id="memberName" />
+            <Input label="英文姓名" value={form.memberNameEn} onChange={(v: string) => updateForm('memberNameEn', v)} autoComplete="name" name="memberNameEn" id="memberNameEn" />
           </Row>
           <Row>
             <div>
@@ -285,12 +351,33 @@ const selectedBadge = badges.find(b => b.fullTitle === form.badgeName);
                 <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>團長：{selectedGroup.leaderTitle}</p>
               )}
             </div>
-            <Input label="YMIS 童軍成員編號" value={form.ymNumber} onChange={(v: string) => updateForm('ymNumber', v)} required />
+            <Input label="YMIS 童軍成員編號" value={form.ymNumber} onChange={(v: string) => updateForm('ymNumber', v)} required autoComplete="off" name="ymNumber" id="ymNumber" />
           </Row>
           <Row>
-            <Input label="聯絡電話" value={form.phone} onChange={(v: string) => updateForm('phone', v)} required />
-            <Input label="成員電郵" value={form.email} onChange={(v: string) => updateForm('email', v)} type="email" required />
+            <Input label="聯絡電話" value={form.phone} onChange={(v: string) => updateForm('phone', v)} required type="tel" autoComplete="tel" name="phone" id="phone" />
+            <Input label="成員電郵" value={form.email} onChange={(v: string) => updateForm('email', v)} type="email" required autoComplete="email" name="email" id="email" />
           </Row>
+          <div style={{ background: '#f9fbe7', padding: '12px', borderRadius: '8px', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 600 }}>
+              <input
+                type="checkbox"
+                checked={rememberProfile}
+                onChange={e => setRememberProfile(e.target.checked)}
+                style={{ marginRight: '8px' }}
+              />
+              💾 記住我的個人資料（下次自動填寫）
+            </label>
+            <button
+              type="button"
+              onClick={clearSavedProfile}
+              style={{ fontSize: '12px', padding: '6px 12px', background: 'white', border: '1px solid #ccc', borderRadius: '6px', cursor: 'pointer', color: '#666' }}
+            >
+              清除已儲存資料
+            </button>
+          </div>
+          <p style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
+            資料只會儲存在此瀏覽器本機，不會上傳伺服器。公用電腦請勿勾選。
+          </p>
         </Section>
 
         {/* ===== 家長資料 ===== */}
@@ -300,8 +387,8 @@ const selectedBadge = badges.find(b => b.fullTitle === form.badgeName);
             提交後系統將自動發送確認電郵給家長，家長確認後才會通知團長。
           </div>
           <Row>
-            <Input label="家長姓名" value={form.parentName} onChange={(v: string) => updateForm('parentName', v)} required placeholder="例如：陳大文" />
-            <Input label="家長電郵" value={form.parentEmail} onChange={(v: string) => updateForm('parentEmail', v)} type="email" required placeholder="家長用來確認的電郵地址" />
+            <Input label="家長姓名" value={form.parentName} onChange={(v: string) => updateForm('parentName', v)} required placeholder="例如：陳大文" autoComplete="name" name="parentName" id="parentName" />
+            <Input label="家長電郵" value={form.parentEmail} onChange={(v: string) => updateForm('parentEmail', v)} type="email" required placeholder="家長用來確認的電郵地址" autoComplete="email" name="parentEmail" id="parentEmail" />
           </Row>
         </Section>
 
@@ -430,6 +517,7 @@ const selectedBadge = badges.find(b => b.fullTitle === form.badgeName);
                 value={form.courseName}
                 onChange={(v: string) => updateForm('courseName', v)}
                 placeholder="請填寫名稱及主辦單位"
+                autoComplete="off"
               />
             </div>
           )}
@@ -444,6 +532,7 @@ const selectedBadge = badges.find(b => b.fullTitle === form.badgeName);
                   onChange={(v: string) => updateForm('certNumber', v)}
                   required
                   placeholder="例如：FA-2024-001"
+                  autoComplete="off"
                 />
                 <Input
                   label="發證機構"
@@ -451,6 +540,7 @@ const selectedBadge = badges.find(b => b.fullTitle === form.badgeName);
                   onChange={(v: string) => updateForm('certIssuer', v)}
                   required
                   placeholder="例如：香港聖約翰救護機構"
+                  autoComplete="off"
                 />
               </Row>
               <div style={{ marginTop: '8px' }}>
@@ -537,7 +627,7 @@ function Row({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Input({ label, value, onChange, required, type = 'text', placeholder }: { label: string; value: string; onChange: (v: string) => void; required?: boolean; type?: string; placeholder?: string }) {
+function Input({ label, value, onChange, required, type = 'text', placeholder, autoComplete, name, id }: { label: string; value: string; onChange: (v: string) => void; required?: boolean; type?: string; placeholder?: string; autoComplete?: string; name?: string; id?: string }) {
   return (
     <div>
       <label style={labelStyle}>
@@ -545,6 +635,7 @@ function Input({ label, value, onChange, required, type = 'text', placeholder }:
       </label>
       <input
         type={type} value={value} required={required} placeholder={placeholder}
+        autoComplete={autoComplete} name={name} id={id}
         onChange={e => onChange(e.target.value)}
         style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', boxSizing: 'border-box' }}
       />
