@@ -1,0 +1,20 @@
+# 文件與設計筆記（build 不需要）
+docs
+*.md
+
+# 舊 build 產物與本機上傳檔（已從 Git untrack，這裡再擋一次，
+# 避免用 Vercel CLI 本機部署時誤傳）
+dist
+uploads
+
+# 測試（repo 目前尚無，先行排除）
+__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# 編輯器 / 作業系統
+.vscode
+.idea
+.DS_Store

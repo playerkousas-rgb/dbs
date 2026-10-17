@@ -3,3 +3,10 @@ node_modules
 out
 build
 .env*.local
+
+# 舊 build 產物與本機上傳檔（不再由 Git 追蹤）
+dist/
+uploads/
+
+# Vercel CLI 本機連結
+.vercel

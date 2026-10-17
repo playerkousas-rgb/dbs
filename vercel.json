@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "*": false,
+      "**": false
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/admin/print-cert/:id",
+      "destination": "/admin/print-cert/_.html"
+    }
+  ]
+}
